@@ -146,13 +146,22 @@ export class MsgParser {
   }
 
   decodeText(buffer, isUnicode = true) {
+    if (!buffer || buffer.length === 0) return '';
     if (isUnicode) {
-      const decoder = new TextDecoder('utf-16le');
-      return decoder.decode(buffer);
-    } else {
-      const decoder = new TextDecoder('utf-8');
-      return decoder.decode(buffer);
+      try {
+        const text = new TextDecoder('utf-16le').decode(buffer).replace(/\0/g, '');
+        if (text && text.trim().length > 0 && !text.includes('\uFFFD')) return text;
+      } catch (e) {}
     }
+    try {
+      const text = new TextDecoder('windows-1252').decode(buffer).replace(/\0/g, '');
+      if (text && text.trim().length > 0) return text;
+    } catch (e) {}
+    try {
+      const text = new TextDecoder('utf-8').decode(buffer).replace(/\0/g, '');
+      if (text && text.trim().length > 0) return text;
+    } catch (e) {}
+    return '';
   }
 
   parse() {

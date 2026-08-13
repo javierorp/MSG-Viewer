@@ -216,8 +216,6 @@
           const offset = (token >> 4) & 0xFFF;
           const length = (token & 0xF) + 2;
 
-          if (writeOffset === offset) break;
-
           for (let step = 0; step < length; step++) {
             if (outPos >= rawSize) break;
             const char = dict[(offset + step) % 4096];
@@ -243,33 +241,47 @@
 
     let rtfString = '';
     try {
-      rtfString = new TextDecoder('utf-8').decode(rtfBytes);
-    } catch (e) {
       rtfString = new TextDecoder('windows-1252').decode(rtfBytes);
+    } catch (e) {
+      rtfString = new TextDecoder('utf-8').decode(rtfBytes);
     }
 
-    const htmlMatch = rtfString.match(/(<html[\s\S]*?<\/html>|<!DOCTYPE[\s\S]*?>|<body[\s\S]*?<\/body>)/i);
+    // 1. Direct match for <html...>...</html> or <!DOCTYPE...> or <body...>
+    const htmlMatch = rtfString.match(/(<html[\s\S]*?<\/html>|<!DOCTYPE[\s\S]*?<\/html>|<body[\s\S]*?<\/body>)/i);
     if (htmlMatch) {
-      return { html: htmlMatch[0], text: '' };
+      let cleanHtml = htmlMatch[0];
+      cleanHtml = cleanHtml.replace(/\\htmltag\d+ ?/gi, '');
+      cleanHtml = cleanHtml.replace(/\\\'([0-9a-fA-F]{2})/g, (m, hex) => String.fromCharCode(parseInt(hex, 16)));
+      return { html: cleanHtml, text: '' };
     }
 
+    // 2. Unencapsulate HTML from RTF \fromhtml or \htmltag
     if (rtfString.includes('\\fromhtml') || rtfString.includes('\\htmltag')) {
       let clean = rtfString.replace(/\\htmlrtf[\s\S]*?\\htmlrtf0/gi, '');
       clean = clean.replace(/\{\\\*\\htmltag\d+ ?([\s\S]*?)\}/gi, (match, tagContent) => {
         return tagContent.replace(/\\[a-zA-Z]+(-?\d+)? ?/g, '');
       });
-      clean = clean.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
+      clean = clean.replace(/\\\'([0-9a-fA-F]{2})/g, (match, hex) => {
+        const code = parseInt(hex, 16);
+        return String.fromCharCode(code);
+      });
       clean = clean.replace(/\\[a-zA-Z]+(-?\d+)? ?/g, '');
       clean = clean.replace(/[{}]/g, '').trim();
 
-      if (clean.includes('<') && clean.includes('>')) {
-        return { html: clean, text: cleanGarbledText(clean.replace(/<[^>]+>/g, '')) };
+      const subMatch = clean.match(/(<html[\s\S]*?<\/html>|<body[\s\S]*?<\/body>|<div[\s\S]*?<\/div>|<p[\s\S]*?<\/p>)/i);
+      if (subMatch) {
+        return { html: subMatch[0], text: cleanGarbledText(clean.replace(/<[^>]+>/g, ' ')) };
+      } else if (clean.includes('<') && clean.includes('>')) {
+        return { html: clean, text: cleanGarbledText(clean.replace(/<[^>]+>/g, ' ')) };
       }
     }
 
+    // 3. Fallback: Extract plain text from RTF
     let plainText = rtfString
       .replace(/\\par/gi, '\n')
-      .replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/\\line/gi, '\n')
+      .replace(/\\tab/gi, '\t')
+      .replace(/\\\'([0-9a-fA-F]{2})/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
       .replace(/\\[a-zA-Z]+(-?\d+)? ?/g, '')
       .replace(/[{}]/g, '');
 
@@ -289,12 +301,12 @@
     }
 
     try {
-      const text = new TextDecoder('utf-8').decode(buffer).replace(/\0/g, '');
-      if (text && text.trim().length > 0 && !text.includes('\uFFFD')) return cleanGarbledText(text);
+      const text = new TextDecoder('windows-1252').decode(buffer).replace(/\0/g, '');
+      if (text && text.trim().length > 0) return cleanGarbledText(text);
     } catch (e) {}
 
     try {
-      const text = new TextDecoder('windows-1252').decode(buffer).replace(/\0/g, '');
+      const text = new TextDecoder('utf-8').decode(buffer).replace(/\0/g, '');
       if (text && text.trim().length > 0) return cleanGarbledText(text);
     } catch (e) {}
 
@@ -896,8 +908,17 @@
     }
 
     async parseMsgWithServer(arrayBuffer) {
+      const hostname = window.location.hostname || '';
+      if (hostname.endsWith('github.io') || hostname.endsWith('github.com')) {
+        return null;
+      }
       try {
-        const apiUrl = window.location.protocol.startsWith('http') ? '/api/parse' : 'http://127.0.0.1:8080/api/parse';
+        const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+        const apiUrl = isLocalHost ? '/api/parse' : 'http://127.0.0.1:8080/api/parse';
+        if (window.location.protocol === 'https:' && !isLocalHost) {
+          return null;
+        }
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/octet-stream' },
