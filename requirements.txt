@@ -1,0 +1,6 @@
+# Main library for native parsing of Outlook .msg files
+extract-msg>=0.53.0
+
+# Optional: For packaging into a standalone .exe executable
+pyinstaller>=6.0.0
+

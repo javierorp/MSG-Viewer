@@ -1,12 +1,12 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MSG Viewer</title>
     <meta
       name="description"
-      content="Visor gratuito, offline y seguro de archivos .msg para Windows sin necesidad de permisos de administrador."
+      content="Free, offline, and secure .msg file viewer for Windows without administrator permissions required."
     />
     <meta name="theme-color" content="#2563eb" />
     <link rel="manifest" href="manifest.json" />
@@ -68,17 +68,17 @@
             <select
               id="langSelect"
               class="select-lang"
-              aria-label="Seleccionar Idioma / Select Language"
+              aria-label="Select Language / Seleccionar Idioma"
             >
+              <option value="en" selected>English (EN)</option>
               <option value="es">Español (ES)</option>
-              <option value="en">English (EN)</option>
             </select>
           </div>
 
           <button
             id="btnOpen"
             class="btn btn-primary"
-            title="Abrir archivo .msg"
+            title="Open .msg file"
           >
             <svg
               width="18"
@@ -94,13 +94,13 @@
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            <span data-i18n="openMsg">Abrir Correo .msg</span>
+            <span data-i18n="openMsg">Open .msg Email</span>
           </button>
 
           <button
             id="btnOpenFolder"
             class="btn btn-secondary"
-            title="Abrir carpeta con archivos .msg"
+            title="Open folder with .msg files"
           >
             <svg
               width="18"
@@ -116,13 +116,13 @@
                 d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
               />
             </svg>
-            <span data-i18n="openFolder">Abrir Carpeta</span>
+            <span data-i18n="openFolder">Open Folder</span>
           </button>
 
           <button
             id="btnPrint"
             class="btn btn-secondary"
-            title="Imprimir o guardar como PDF"
+            title="Print or save as PDF"
           >
             <svg
               width="18"
@@ -138,14 +138,14 @@
                 d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
               />
             </svg>
-            <span data-i18n="printPdf">Imprimir / PDF</span>
+            <span data-i18n="printPdf">Print / PDF</span>
           </button>
 
           <button
             id="btnThemeToggle"
             class="btn btn-icon"
-            title="Cambiar Tema Claro/Oscuro"
-            aria-label="Cambiar Tema"
+            title="Toggle Light/Dark Theme"
+            aria-label="Toggle Theme"
           >
             <svg
               width="20"
@@ -167,8 +167,8 @@
           <button
             id="btnAbout"
             class="btn btn-icon"
-            title="Acerca de MSG Viewer"
-            aria-label="Acerca de"
+            title="About MSG Viewer"
+            aria-label="About"
           >
             <svg
               width="20"
@@ -227,10 +227,10 @@
               </svg>
             </div>
             <div class="drop-title" data-i18n="dropOverlayTitle">
-              Suelta los archivos .msg aquí
+              Drop .msg files or folders here
             </div>
             <div class="drop-desc" data-i18n="dropOverlayDesc">
-              Se añadirán a la lista de mensajes de forma inmediata
+              They will be added to the message list immediately
             </div>
           </div>
         </div>
@@ -257,7 +257,7 @@
               <input
                 type="text"
                 id="searchInput"
-                placeholder="Buscar por asunto o remitente..."
+                placeholder="Search by subject or sender..."
                 data-i18n-placeholder="searchPlaceholder"
               />
             </div>
@@ -290,11 +290,11 @@
                 </svg>
               </div>
               <div class="drop-title" data-i18n="dropTitle">
-                Selecciona o arrastra un correo .msg
+                Select or drag a .msg email or folder
               </div>
               <div class="drop-desc" data-i18n="dropDesc">
-                Haz clic aquí o arrastra archivos de correo (.msg) o carpetas
-                completas desde tu equipo para abrirlos de forma instantánea.
+                Click the buttons or drag email files (.msg) or entire folders
+                from your computer to open them instantly.
               </div>
               <div style="display: flex; gap: 10px; margin-top: 8px">
                 <button
@@ -302,14 +302,14 @@
                   class="btn btn-primary"
                   data-i18n="exploreFiles"
                 >
-                  Explorar Archivos
+                  Browse Files
                 </button>
                 <button
                   id="btnExploreFolder"
                   class="btn btn-secondary"
                   data-i18n="openFolder"
                 >
-                  Abrir Carpeta
+                  Open Folder
                 </button>
               </div>
             </div>
@@ -319,12 +319,12 @@
           <div id="emailDetails" class="email-details" style="display: none">
             <!-- Email Metadata Header Card -->
             <div class="email-header-card">
-              <div class="email-subject" id="emailSubject">(Sin Asunto)</div>
+              <div class="email-subject" id="emailSubject">(No Subject)</div>
               <div class="email-meta-grid">
-                <span class="meta-label" data-i18n="labelFrom">De:</span>
+                <span class="meta-label" data-i18n="labelFrom">From:</span>
                 <span class="meta-value" id="emailSender"></span>
 
-                <span class="meta-label" data-i18n="labelTo">Para:</span>
+                <span class="meta-label" data-i18n="labelTo">To:</span>
                 <span class="meta-value" id="emailTo"></span>
 
                 <div id="emailCcRow" style="display: none">
@@ -347,10 +347,11 @@
                     class="tab-btn active"
                     data-i18n="tabHtml"
                   >
-                    HTML Original
+                    Original HTML
                   </button>
                   <button id="tabText" class="tab-btn" data-i18n="tabText">
-                    Texto Plano
+                    Plain Text
+                  </button>
                   </button>
                 </div>
               </div>
@@ -379,14 +380,14 @@
                     ></path>
                   </svg>
                   <span
-                    ><span data-i18n="attachmentsTitle">Archivos Adjuntos</span>
+                    ><span data-i18n="attachmentsTitle">Attachments</span>
                     (<span id="attachmentsCount">0</span>)</span
                   >
                 </div>
                 <button
                   id="btnDownloadAll"
                   class="btn btn-secondary btn-xs"
-                  title="Guardar todos los adjuntos"
+                  title="Save all attachments"
                 >
                   <svg
                     width="14"
@@ -402,7 +403,7 @@
                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                     />
                   </svg>
-                  <span data-i18n="saveAll">Guardar Todos</span>
+                  <span data-i18n="saveAll">Save All</span>
                 </button>
               </div>
               <div id="attachmentsGrid" class="attachments-grid"></div>
@@ -413,7 +414,7 @@
               <iframe
                 id="bodyIframe"
                 class="email-body-iframe"
-                title="Cuerpo del Correo HTML"
+                title="HTML Email Body"
               ></iframe>
               <div
                 id="bodyPlain"
@@ -451,7 +452,7 @@
                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
               />
             </svg>
-            <span id="modalFileName" data-i18n="modalTitle">Vista Previa</span>
+            <span id="modalFileName" data-i18n="modalTitle">Preview</span>
           </div>
           <div style="display: flex; gap: 8px; align-items: center">
             <button id="modalBtnDownload" class="btn btn-primary btn-xs">
@@ -469,13 +470,13 @@
                   d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                 />
               </svg>
-              <span data-i18n="modalSave">Guardar Archivo</span>
+              <span data-i18n="modalSave">Save File</span>
             </button>
             <button
               id="modalBtnClose"
               class="btn btn-icon"
               style="width: 32px; height: 32px"
-              title="Cerrar"
+              title="Close"
             >
               ✕
             </button>
@@ -506,13 +507,13 @@
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span data-i18n="aboutTitle">Acerca de MSG Viewer</span>
+            <span data-i18n="aboutTitle">About MSG Viewer</span>
           </div>
           <button
             id="aboutModalBtnClose"
             class="btn btn-icon"
             style="width: 32px; height: 32px"
-            title="Cerrar"
+            title="Close"
           >
             ✕
           </button>
@@ -540,12 +541,12 @@
           </div>
 
           <p class="about-desc" data-i18n="aboutDesc">
-            Visor gratuito, offline y seguro de archivos .msg para Windows sin necesidad de permisos de administrador.
+            Free, offline, and secure .msg file viewer for Windows without administrator permissions required.
           </p>
 
           <div class="about-info-list">
             <div class="about-info-item">
-              <span class="about-info-label" data-i18n="aboutCreator">Creador:</span>
+              <span class="about-info-label" data-i18n="aboutCreator">Creator:</span>
               <a href="https://javierorp.vercel.app" target="_blank" rel="noopener noreferrer" class="about-link">
                 Javierorp
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
@@ -553,7 +554,7 @@
             </div>
 
             <div class="about-info-item">
-              <span class="about-info-label" data-i18n="aboutRepo">Repositorio GitHub:</span>
+              <span class="about-info-label" data-i18n="aboutRepo">GitHub Repository:</span>
               <a href="https://github.com/javierorp/MSG-Viewer" target="_blank" rel="noopener noreferrer" class="about-link">
                 javierorp/MSG-Viewer
                 <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>

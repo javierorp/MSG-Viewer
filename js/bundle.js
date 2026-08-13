@@ -311,7 +311,7 @@
       const magic = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
       for (let i = 0; i < 8; i++) {
         if (this.buffer[i] !== magic[i]) {
-          throw new Error('El archivo seleccionado no es un archivo .msg válido.');
+          throw new Error('The selected file is not a valid .msg file.');
         }
       }
 
@@ -548,7 +548,7 @@
       }
 
       for (const [attachName, streams] of attachmentStreams.entries()) {
-        let fileName = 'Adjunto';
+        let fileName = 'Attachment';
         let mimeType = 'application/octet-stream';
         let content = null;
 
@@ -567,7 +567,7 @@
         }
 
         if (content && content.length > 0) {
-          const cleanFileName = fileName.replace(/\0/g, '').trim() || 'adjunto.bin';
+          const cleanFileName = fileName.replace(/\0/g, '').trim() || 'attachment.bin';
           const ext = cleanFileName.includes('.') ? cleanFileName.split('.').pop().toLowerCase() : '';
           
           if (!mimeType || mimeType === 'application/octet-stream') {
@@ -603,7 +603,7 @@
       this.viewMode = 'html';
       
       // i18n language state
-      const defaultLang = navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en';
+      const defaultLang = 'en';
       this.currentLang = localStorage.getItem('msg_viewer_lang') || defaultLang;
 
       this.initDOMElements();
@@ -613,12 +613,12 @@
     }
 
     t(key) {
-      const dict = translations[this.currentLang] || translations.es;
+      const dict = translations[this.currentLang] || translations.en;
       return dict[key] || key;
     }
 
     applyLanguage(lang) {
-      if (!translations[lang]) lang = 'es';
+      if (!translations[lang]) lang = 'en';
       this.currentLang = lang;
       localStorage.setItem('msg_viewer_lang', lang);
       document.documentElement.lang = lang;
@@ -866,7 +866,7 @@
         this.handleFilesSelected(msgFiles);
       } catch (err) {
         if (err.name !== 'AbortError') {
-          console.error('Error al abrir carpeta:', err);
+          console.error('Error opening folder:', err);
         }
       }
     }
@@ -944,7 +944,7 @@
           
           this.messages.push(parsedData);
         } catch (err) {
-          console.error('Error parseando archivo .msg:', err);
+          console.error('Error parsing .msg file:', err);
           alert(`${this.t('readErrorAlert')} ${file.name}: ${err.message}`);
         }
       }
@@ -1177,7 +1177,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = attachment.fileName || 'adjunto';
+      a.download = attachment.fileName || 'attachment';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

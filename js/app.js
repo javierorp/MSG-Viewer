@@ -112,7 +112,7 @@ class MsgViewerApp {
   async handleFilesSelected(files) {
     const msgFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.msg'));
     if (msgFiles.length === 0) {
-      alert('Por favor selecciona un archivo con extensión .msg');
+      alert('Please select a file with .msg extension');
       return;
     }
 
@@ -127,8 +127,8 @@ class MsgViewerApp {
         
         this.messages.push(parsedData);
       } catch (err) {
-        console.error('Error parseando archivo .msg:', err);
-        alert(`No se pudo leer el archivo ${file.name}: ${err.message}`);
+        console.error('Error parsing .msg file:', err);
+        alert(`Could not read file ${file.name}: ${err.message}`);
       }
     }
 
@@ -145,9 +145,9 @@ class MsgViewerApp {
       const item = document.createElement('div');
       item.className = `file-item ${idx === this.currentMsgIndex ? 'active' : ''}`;
       item.innerHTML = `
-        <div class="file-item-subject">${escapeHtml(msg.subject || '(Sin Asunto)')}</div>
+        <div class="file-item-subject">${escapeHtml(msg.subject || '(No Subject)')}</div>
         <div class="file-item-meta">
-          <span class="file-item-sender">${escapeHtml(msg.senderName || msg.senderEmail || 'Desconocido')}</span>
+          <span class="file-item-sender">${escapeHtml(msg.senderName || msg.senderEmail || 'Unknown')}</span>
           <span>${msg.attachments ? msg.attachments.length + ' 📎' : ''}</span>
         </div>
       `;
@@ -188,9 +188,9 @@ class MsgViewerApp {
     this.elements.emailDetails.style.display = 'flex';
 
     // Populate Header Fields
-    this.elements.emailSubject.textContent = msg.subject || '(Sin Asunto)';
-    this.elements.emailSender.textContent = msg.senderEmail ? `${msg.senderName} <${msg.senderEmail}>` : (msg.senderName || 'Desconocido');
-    this.elements.emailTo.textContent = msg.displayTo || '(Sin Destinatarios)';
+    this.elements.emailSubject.textContent = msg.subject || '(No Subject)';
+    this.elements.emailSender.textContent = msg.senderEmail ? `${msg.senderName} <${msg.senderEmail}>` : (msg.senderName || 'Unknown');
+    this.elements.emailTo.textContent = msg.displayTo || '(No Recipients)';
     
     if (msg.displayCc) {
       this.elements.emailCcRow.style.display = 'grid';
@@ -263,7 +263,7 @@ class MsgViewerApp {
     } else {
       this.elements.bodyIframe.style.display = 'none';
       this.elements.bodyPlain.style.display = 'block';
-      this.elements.bodyPlain.textContent = msg.bodyText || '(Este correo no contiene texto en el cuerpo)';
+      this.elements.bodyPlain.textContent = msg.bodyText || '(This email has no body text)';
     }
   }
 
@@ -272,7 +272,7 @@ class MsgViewerApp {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = attachment.fileName || 'adjunto';
+    a.download = attachment.fileName || 'attachment';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

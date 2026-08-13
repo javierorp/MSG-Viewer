@@ -1,6 +1,7 @@
-# Script de arranque y comprobación del servidor Python para MSG Viewer
+# Startup and health check script for the MSG Viewer Python server
 $port = 8080
 $ready = $false
+
 
 try {
     $res = Invoke-WebRequest -Uri "http://127.0.0.1:$port/index.html" -UseBasicParsing -TimeoutSec 1 -ErrorAction SilentlyContinue

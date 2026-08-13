@@ -22,7 +22,11 @@ if sys.stderr is None:
     sys.stderr = open(os.devnull, 'w')
 
 PORT = 8080
-DIRECTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if getattr(sys, 'frozen', False):
+    DIRECTORY = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
+else:
+    DIRECTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 class MsgHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
@@ -59,7 +63,7 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
                 attachments_list = []
                 for att in msg.attachments:
                     try:
-                        att_name = att.longFilename or att.shortFilename or "adjunto.bin"
+                        att_name = att.longFilename or att.shortFilename or "attachment.bin"
                         att_data = att.data if hasattr(att, 'data') else b''
                         b64_content = base64.b64encode(att_data).decode('ascii') if att_data else ""
                         ext = att_name.split('.')[-1].lower() if '.' in att_name else ""
@@ -119,7 +123,7 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
                         pass
 
                 response_data = {
-                    "subject": msg.subject or "(Sin Asunto)",
+                    "subject": msg.subject or "(No Subject)",
                     "senderName": msg.sender or "",
                     "senderEmail": msg.sender or "",
                     "displayTo": msg.to or "",
@@ -147,14 +151,32 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
+import threading
+
+def launch_app_window():
+    time.sleep(0.6)
+    edge_paths = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
+    ]
+    for ep in edge_paths:
+        if os.path.exists(ep):
+            subprocess.Popen([ep, f"--app=http://127.0.0.1:{PORT}"])
+            return
+    import webbrowser
+    webbrowser.open(f"http://127.0.0.1:{PORT}")
+
 def run_server():
     os.chdir(DIRECTORY)
+    if getattr(sys, 'frozen', False):
+        threading.Thread(target=launch_app_window, daemon=True).start()
     try:
         with ReusableTCPServer(("127.0.0.1", PORT), MsgHandler) as httpd:
-            print(f"Servidor del MSG Viewer iniciado en http://127.0.0.1:{PORT}", flush=True)
+            print(f"MSG Viewer server started at http://127.0.0.1:{PORT}", flush=True)
             httpd.serve_forever()
     except OSError:
         sys.exit(0)
 
 if __name__ == '__main__':
     run_server()
+

@@ -25,20 +25,20 @@ wheels/
 *.egg
 *.spec
 
-# Entornos virtuales / Node
+# Virtual environments / Node
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Archivos de configuración local y secretos
+# Local configuration files and secrets
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Certificados y claves privadas (seguridad para scripts de firma)
+# Certificates and private keys (security for signing scripts)
 *.pfx
 *.p12
 *.key
@@ -47,18 +47,18 @@ yarn-error.log*
 *.crt
 *.pvk
 
-# Ejecutables compilados y binarios temporales
+# Compiled executables and temporary binaries
 *.exe
 *.dll
 *.iso
 *.msi
 
-# Archivos de registros y temporales
+# Log and temporary files
 *.log
 tmp/
 temp/
 
-# Archivos de entorno de desarrollo / IDEs
+# Development environment files / IDEs
 .vscode/
 .idea/
 *.suo
@@ -69,9 +69,10 @@ temp/
 *.swo
 *~
 
-# Sistema operativo
+# Operating system
 .DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+

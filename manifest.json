@@ -1,7 +1,7 @@
 {
   "name": "MSG Viewer",
   "short_name": "MSG Viewer",
-  "description": "Visor offline y seguro para archivos .msg en Windows",
+  "description": "Offline and secure viewer for .msg files on Windows",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b0f19",

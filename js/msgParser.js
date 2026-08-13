@@ -13,7 +13,7 @@ export class MsgParser {
     const magic = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
     for (let i = 0; i < 8; i++) {
       if (this.buffer[i] !== magic[i]) {
-        throw new Error('El archivo seleccionado no es un archivo .msg válido de Outlook.');
+        throw new Error('The selected file is not a valid Outlook .msg file.');
       }
     }
 
@@ -157,7 +157,7 @@ export class MsgParser {
 
   parse() {
     const msgData = {
-      subject: '(Sin Asunto)',
+      subject: '(No Subject)',
       senderName: '',
       senderEmail: '',
       displayTo: '',
@@ -233,7 +233,7 @@ export class MsgParser {
     }
 
     for (const [attachName, streams] of attachmentStreams.entries()) {
-      let fileName = 'Adjunto';
+      let fileName = 'Attachment';
       let mimeType = 'application/octet-stream';
       let content = null;
 
