@@ -246,30 +246,40 @@
       rtfString = new TextDecoder('utf-8').decode(rtfBytes);
     }
 
-    // Step 1: Strip RTF fallback text blocks (\htmlrtf ... \htmlrtf0)
-    let clean = rtfString.replace(/\\htmlrtf[\s\S]*?\\htmlrtf0/gi, '');
-
-    // Step 2: Unencapsulate RTF htmltag groups
-    clean = clean.replace(/\{\\\*\\htmltag\d* ?([\s\S]*?)\}/gi, '$1');
-    clean = clean.replace(/\\htmltag\d* ?/gi, '');
-
-    // Step 3: Decode RTF hex escapes (\'xx -> character)
-    clean = clean.replace(/\\\'([0-9a-fA-F]{2})/g, (match, hex) => {
+    // Step 1: Decode RTF hex escapes (\'xx -> character)
+    let clean = rtfString.replace(/\\\'([0-9a-fA-F]{2})/g, (match, hex) => {
       const code = parseInt(hex, 16);
       return String.fromCharCode(code);
     });
 
-    // Step 4: Direct search for full HTML tags (<html...</html> or <!DOCTYPE...</html> or <body...</body>)
+    // Step 2: Strip all RTF fallback text blocks (\htmlrtf ... \htmlrtf0) including nested blocks
+    let prevClean = '';
+    let iterations = 0;
+    while (clean !== prevClean && clean.includes('\\htmlrtf') && iterations < 10) {
+      prevClean = clean;
+      clean = clean.replace(/\{?\\htmlrtf[\s\S]*?\\htmlrtf0\}?/gi, '');
+      iterations++;
+    }
+
+    // Step 3: Unencapsulate RTF htmltag groups {\*\htmltagXX content}
+    clean = clean.replace(/\{\\\*\\htmltag\d* ?([\s\S]*?)\}/gi, '$1');
+    clean = clean.replace(/\\htmltag\d* ?/gi, '');
+
+    // Step 4: Direct search for HTML document structure (<html...</html> or <!DOCTYPE...</html> or <body...</body>)
     const htmlMatch = clean.match(/(<html[\s\S]*?<\/html>|<!DOCTYPE[\s\S]*?<\/html>|<body[\s\S]*?<\/body>)/i);
     if (htmlMatch) {
       let cleanHtml = htmlMatch[0];
       cleanHtml = cleanHtml.replace(/\\([a-zA-Z]+)(-?\d+)? ?/g, '');
+      cleanHtml = cleanHtml.replace(/>\s*[\{\}]+\s*</g, '><');
+      cleanHtml = cleanHtml.replace(/>[\{\}\s]+/g, '> ');
+      cleanHtml = cleanHtml.replace(/[\{\}\s]+</g, ' <');
       return { html: cleanHtml, text: '' };
     }
 
-    // Step 5: Partial HTML check (<div...>, <p...>, etc.)
+    // Step 5: Partial HTML check (<div...>, <p...>, <table...>)
     if (clean.includes('<') && clean.includes('>')) {
       let partialHtml = clean.replace(/\\([a-zA-Z]+)(-?\d+)? ?/g, '');
+      partialHtml = partialHtml.replace(/>\s*[\{\}]+\s*</g, '><');
       const subMatch = partialHtml.match(/(<div[\s\S]*?<\/div>|<p[\s\S]*?<\/p>|<table[\s\S]*?<\/table>)/i);
       if (subMatch) {
         return { html: subMatch[0], text: cleanGarbledText(clean.replace(/<[^>]+>/g, ' ')) };
