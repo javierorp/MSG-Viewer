@@ -246,37 +246,39 @@
       rtfString = new TextDecoder('utf-8').decode(rtfBytes);
     }
 
-    // 1. Direct match for <html...>...</html> or <!DOCTYPE...> or <body...>
-    const htmlMatch = rtfString.match(/(<html[\s\S]*?<\/html>|<!DOCTYPE[\s\S]*?<\/html>|<body[\s\S]*?<\/body>)/i);
+    // Step 1: Strip RTF fallback text blocks (\htmlrtf ... \htmlrtf0)
+    let clean = rtfString.replace(/\\htmlrtf[\s\S]*?\\htmlrtf0/gi, '');
+
+    // Step 2: Unencapsulate RTF htmltag groups
+    clean = clean.replace(/\{\\\*\\htmltag\d* ?([\s\S]*?)\}/gi, '$1');
+    clean = clean.replace(/\\htmltag\d* ?/gi, '');
+
+    // Step 3: Decode RTF hex escapes (\'xx -> character)
+    clean = clean.replace(/\\\'([0-9a-fA-F]{2})/g, (match, hex) => {
+      const code = parseInt(hex, 16);
+      return String.fromCharCode(code);
+    });
+
+    // Step 4: Direct search for full HTML tags (<html...</html> or <!DOCTYPE...</html> or <body...</body>)
+    const htmlMatch = clean.match(/(<html[\s\S]*?<\/html>|<!DOCTYPE[\s\S]*?<\/html>|<body[\s\S]*?<\/body>)/i);
     if (htmlMatch) {
       let cleanHtml = htmlMatch[0];
-      cleanHtml = cleanHtml.replace(/\\htmltag\d+ ?/gi, '');
-      cleanHtml = cleanHtml.replace(/\\\'([0-9a-fA-F]{2})/g, (m, hex) => String.fromCharCode(parseInt(hex, 16)));
+      cleanHtml = cleanHtml.replace(/\\([a-zA-Z]+)(-?\d+)? ?/g, '');
       return { html: cleanHtml, text: '' };
     }
 
-    // 2. Unencapsulate HTML from RTF \fromhtml or \htmltag
-    if (rtfString.includes('\\fromhtml') || rtfString.includes('\\htmltag')) {
-      let clean = rtfString.replace(/\\htmlrtf[\s\S]*?\\htmlrtf0/gi, '');
-      clean = clean.replace(/\{\\\*\\htmltag\d+ ?([\s\S]*?)\}/gi, (match, tagContent) => {
-        return tagContent.replace(/\\[a-zA-Z]+(-?\d+)? ?/g, '');
-      });
-      clean = clean.replace(/\\\'([0-9a-fA-F]{2})/g, (match, hex) => {
-        const code = parseInt(hex, 16);
-        return String.fromCharCode(code);
-      });
-      clean = clean.replace(/\\[a-zA-Z]+(-?\d+)? ?/g, '');
-      clean = clean.replace(/[{}]/g, '').trim();
-
-      const subMatch = clean.match(/(<html[\s\S]*?<\/html>|<body[\s\S]*?<\/body>|<div[\s\S]*?<\/div>|<p[\s\S]*?<\/p>)/i);
+    // Step 5: Partial HTML check (<div...>, <p...>, etc.)
+    if (clean.includes('<') && clean.includes('>')) {
+      let partialHtml = clean.replace(/\\([a-zA-Z]+)(-?\d+)? ?/g, '');
+      const subMatch = partialHtml.match(/(<div[\s\S]*?<\/div>|<p[\s\S]*?<\/p>|<table[\s\S]*?<\/table>)/i);
       if (subMatch) {
         return { html: subMatch[0], text: cleanGarbledText(clean.replace(/<[^>]+>/g, ' ')) };
-      } else if (clean.includes('<') && clean.includes('>')) {
-        return { html: clean, text: cleanGarbledText(clean.replace(/<[^>]+>/g, ' ')) };
+      } else {
+        return { html: partialHtml, text: cleanGarbledText(clean.replace(/<[^>]+>/g, ' ')) };
       }
     }
 
-    // 3. Fallback: Extract plain text from RTF
+    // Step 6: Fallback for Plain Text
     let plainText = rtfString
       .replace(/\\par/gi, '\n')
       .replace(/\\line/gi, '\n')
@@ -909,17 +911,12 @@
 
     async parseMsgWithServer(arrayBuffer) {
       const hostname = window.location.hostname || '';
-      if (hostname.endsWith('github.io') || hostname.endsWith('github.com')) {
+      const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+      if (!isLocalHost) {
         return null;
       }
       try {
-        const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
-        const apiUrl = isLocalHost ? '/api/parse' : 'http://127.0.0.1:8080/api/parse';
-        if (window.location.protocol === 'https:' && !isLocalHost) {
-          return null;
-        }
-
-        const response = await fetch(apiUrl, {
+        const response = await fetch('/api/parse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/octet-stream' },
           body: arrayBuffer
