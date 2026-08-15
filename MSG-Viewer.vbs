@@ -6,7 +6,7 @@ scriptPath = WScript.ScriptFullName
 appDir = fso.GetParentFolderName(scriptPath)
 WshShell.CurrentDirectory = appDir
 
-' Execute Iniciar-Visor.cmd in 100% transparent mode (0 = SW_HIDE)
-cmdFile = """" & appDir & "\Iniciar-Visor.cmd"""
+' Execute Start-MSG-Viewer.cmd in 100% transparent mode (0 = SW_HIDE)
+cmdFile = """" & appDir & "\Start-MSG-Viewer.cmd"""
 WshShell.Run "cmd /c " & cmdFile, 0, True
 

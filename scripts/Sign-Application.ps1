@@ -22,7 +22,8 @@ if ($FilePath -and (Test-Path $FilePath)) {
     Write-Host "Signing file: $FilePath" -ForegroundColor Yellow
     Set-AuthenticodeSignature -FilePath $FilePath -Certificate $Cert
     Write-Host "File signed successfully!" -ForegroundColor Green
-} else {
-    Write-Host "Usage instructions: .\Firmar-Aplicacion.ps1 -FilePath 'c:\path\your_app.exe'" -ForegroundColor White
+}
+else {
+    Write-Host "Usage instructions: .\Sign-Application.ps1 -FilePath 'c:\path\your_app.exe'" -ForegroundColor White
 }
 

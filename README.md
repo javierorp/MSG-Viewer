@@ -2,7 +2,7 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](https://www.microsoft.com)
-[![Privacy: 100% Offline](https://img.shields.io/badge/Privacy-100%25%20Offline-success.svg)](#security--privacy)
+[![Privacy: 100% Offline](https://img.shields.io/badge/Privacy-100%25%20Offline-success.svg)]("")
 
 **MSG Viewer** is a lightweight, secure, and fully offline Outlook `.msg` file viewer designed for Windows. It allows users to open, inspect, and extract attachments from Microsoft Outlook message files without requiring Microsoft Outlook, administrative permissions, or uploading sensitive data to external servers.
 
@@ -31,7 +31,7 @@ MSG Viewer operates as a dual-layer application:
 1. **Frontend**: Standalone web interface built with HTML5, CSS3, and JavaScript, styled with modern UI design patterns.
 2. **Backend**: Lightweight local Python REST API server using the `extract-msg` library to parse OLE/MSG binary formats smoothly.
 
-```
+```text
 [ .msg File ] ──► [ Local Python Server (127.0.0.1:8080) ] ──► [ MSG Viewer App (Edge/Browser UI) ]
 ```
 
@@ -44,21 +44,21 @@ MSG Viewer operates as a dual-layer application:
 - **Windows 10 / 11**
 - **Python 3.8+** (recommended for full binary parsing)
 - **Dependencies**:
+
   ```bash
   pip install extract-msg
   ```
 
 ### Quick Launch
 
-1. Clone or download the repository:
-   ```bash
-   git clone https://github.com/YOUR_USERNAME/msg-viewer.git
-   cd msg-viewer
-   ```
+```bash
+git clone https://github.com/YOUR_USERNAME/msg-viewer.git
+cd msg-viewer
+```
 
-2. Start the viewer:
-   - **Silent Mode (Recommended)**: Double-click `Visor-MSG.vbs` to launch the application seamlessly without opening a console window.
-   - **Command Prompt**: Run `Iniciar-Visor.cmd`.
+1. Start the viewer:
+   - **Silent Mode (Recommended)**: Double-click `MSG-Viewer.vbs` to launch the application seamlessly without opening a console window.
+   - **Command Prompt**: Run `Start-MSG-Viewer.cmd`.
 
 ---
 
@@ -68,30 +68,32 @@ To open `.msg` files directly by double-clicking them in Windows File Explorer *
 
 1. Open PowerShell.
 2. Navigate to the project directory and run:
+
    ```powershell
    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-   .\Asociar-Archivos-MSG.ps1
+   .\Associate-MSG-extension.ps1
    ```
+
 3. Now all `.msg` files will automatically open in MSG Viewer.
 
 ---
 
 ## 📂 Project Structure
 
-```
+```text
 msg-viewer/
-├── index.html                # Main application user interface
-├── manifest.json             # Web app manifest configuration
-├── Iniciar-Visor.cmd         # Windows batch launcher (starts server & opens app mode)
-├── Visor-MSG.vbs             # Silent VBScript launcher (hides command prompt)
-├── Asociar-Archivos-MSG.ps1  # Windows non-admin registry file association script
-├── css/                      # CSS stylesheets (design system, dark/light themes)
-├── js/                       # Client-side logic (UI, parsing fallback, i18n)
-├── py/                       # Local Python server & backend scripts
-│   ├── server.py             # HTTP REST API server (processes .msg via extract-msg)
-│   └── launch.ps1            # Background python server launcher
-└── scripts/                  # Code signing and utility scripts
-    └── Firmar-Aplicacion.ps1 # Self-signing code certificate script
+├── index.html                    # Main application user interface
+├── manifest.json                 # Web app manifest configuration
+├── Start-MSG-Viewer.cmd          # Windows batch launcher (starts server & opens app mode)
+├── MSG-Viewer.vbs                # Silent VBScript launcher (hides command prompt)
+├── Associate-MSG-extension.ps1   # Windows non-admin registry file association script
+├── css/                          # CSS stylesheets (design system, dark/light themes)
+├── js/                           # Client-side logic (UI, parsing fallback, i18n)
+├── py/                           # Local Python server & backend scripts
+│   ├── server.py                 # HTTP REST API server (processes .msg via extract-msg)
+│   └── launch.ps1                # Background python server launcher
+└── scripts/                      # Code signing and utility scripts
+    └── Sign-Application.ps1      # Self-signing code certificate script
 ```
 
 ---
