@@ -953,6 +953,41 @@ body.is-resizing iframe {
   color: var(--accent-primary);
 }
 
+/* Print Button in Controls Bar */
+.btn-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 32px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.btn-print svg {
+  flex-shrink: 0;
+}
+
+.btn-print:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.btn-print:active {
+  transform: scale(0.97);
+}
+
 /* Drag overlay */
 .drag-overlay {
   position: absolute;
@@ -1194,7 +1229,7 @@ body.is-resizing iframe {
     background: transparent !important;
   }
 
-  .top-bar, .sidebar, .sidebar-resizer, .view-controls-bar, .view-tabs, .zoom-controls, .attachments-section, .btn, .search-box {
+  .top-bar, .sidebar, .sidebar-resizer, .view-controls-bar, .view-tabs, .zoom-controls, .btn-print, .attachments-section, .btn, .search-box {
     display: none !important;
   }
 

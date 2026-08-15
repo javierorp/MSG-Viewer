@@ -180,7 +180,16 @@ class MsgViewerApp {
 
     // Print button
     if (this.elements.btnPrint) {
-      this.elements.btnPrint.addEventListener('click', () => window.print());
+      this.elements.btnPrint.addEventListener('click', () => {
+        if (this.viewMode === 'html' && this.elements.bodyIframe.style.display !== 'none') {
+          try {
+            this.elements.bodyIframe.contentWindow.focus();
+            this.elements.bodyIframe.contentWindow.print();
+            return;
+          } catch (e) {}
+        }
+        window.print();
+      });
     }
 
     // Open Folder Location button

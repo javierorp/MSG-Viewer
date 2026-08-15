@@ -18,6 +18,7 @@
       openMsg: "Abrir correo '.msg'",
       openFolder: "Abrir carpeta",
       printPdf: "Imprimir / PDF",
+      printPdfTitle: "Imprimir correo o guardar como PDF",
       searchPlaceholder: "Buscar por asunto o remitente...",
       dropTitle: "Selecciona o arrastra un correo .msg o carpeta",
       dropDesc:
@@ -63,10 +64,12 @@
       zoomIn: "Aumentar tamaño de fuente",
       zoomOut: "Disminuir tamaño de fuente",
       zoomReset: "Restablecer tamaño de fuente",
-      resizeSidebar: "Arrastrar para cambiar el tamaño del panel (doble clic para restablecer)",
+      resizeSidebar:
+        "Arrastrar para cambiar el tamaño del panel (doble clic para restablecer)",
       clearAll: "Limpiar lista",
       clearAllTitle: "Eliminar todos los correos guardados de la lista",
-      clearAllConfirm: "¿Deseas eliminar todos los correos guardados de la lista?",
+      clearAllConfirm:
+        "¿Deseas eliminar todos los correos guardados de la lista?",
       removeMsg: "Eliminar correo de la lista",
       emailCountSingular: "correo",
       emailsCountPlural: "correos",
@@ -78,6 +81,7 @@
       openMsg: "Open '.msg' email",
       openFolder: "Open folder",
       printPdf: "Print / PDF",
+      printPdfTitle: "Print email or save as PDF",
       searchPlaceholder: "Search by subject or sender...",
       dropTitle: "Select or drag a .msg email or folder",
       dropDesc:
@@ -963,7 +967,9 @@
           const savedActiveId = localStorage.getItem("msg_viewer_active_id");
           let activeIndex = -1;
           if (savedActiveId) {
-            activeIndex = this.messages.findIndex((m) => m.id === savedActiveId);
+            activeIndex = this.messages.findIndex(
+              (m) => m.id === savedActiveId,
+            );
           }
           if (activeIndex < 0) activeIndex = this.messages.length - 1;
           this.selectMessage(activeIndex);
@@ -1091,7 +1097,9 @@
         confirmModal: document.getElementById("confirmModal"),
         confirmModalTitle: document.getElementById("confirmModalTitle"),
         confirmModalMessage: document.getElementById("confirmModalMessage"),
-        confirmModalBtnConfirm: document.getElementById("confirmModalBtnConfirm"),
+        confirmModalBtnConfirm: document.getElementById(
+          "confirmModalBtnConfirm",
+        ),
         confirmModalBtnCancel: document.getElementById("confirmModalBtnCancel"),
         confirmModalBtnClose: document.getElementById("confirmModalBtnClose"),
       };
@@ -1595,9 +1603,13 @@
       if (!msg) return -1;
       return this.messages.findIndex((m) => {
         if (msg.id && m.id && msg.id === m.id) return true;
-        if (msg.filePath && m.filePath && msg.filePath === m.filePath) return true;
-        const sameName = (m.fileName || "").toLowerCase() === (msg.fileName || "").toLowerCase();
-        const sameSize = m.fileSize && msg.fileSize ? m.fileSize === msg.fileSize : true;
+        if (msg.filePath && m.filePath && msg.filePath === m.filePath)
+          return true;
+        const sameName =
+          (m.fileName || "").toLowerCase() ===
+          (msg.fileName || "").toLowerCase();
+        const sameSize =
+          m.fileSize && msg.fileSize ? m.fileSize === msg.fileSize : true;
         const sameSubject = (m.subject || "") === (msg.subject || "");
         const sameDate = (m.date || "") === (msg.date || "");
         return sameName && sameSize && sameSubject && sameDate;
@@ -1637,7 +1649,10 @@
         } else {
           rawMsg.id =
             rawMsg.id ||
-            "msg_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
+            "msg_" +
+              Date.now() +
+              "_" +
+              Math.random().toString(36).substring(2, 9);
           rawMsg.savedAt = Date.now();
           this.messages.push(rawMsg);
           toSave.push(rawMsg);
@@ -1700,9 +1715,18 @@
 
         const cleanup = (result) => {
           this.elements.confirmModal.classList.remove("active");
-          this.elements.confirmModalBtnConfirm.removeEventListener("click", onConfirm);
-          this.elements.confirmModalBtnCancel.removeEventListener("click", onCancel);
-          this.elements.confirmModalBtnClose.removeEventListener("click", onCancel);
+          this.elements.confirmModalBtnConfirm.removeEventListener(
+            "click",
+            onConfirm,
+          );
+          this.elements.confirmModalBtnCancel.removeEventListener(
+            "click",
+            onCancel,
+          );
+          this.elements.confirmModalBtnClose.removeEventListener(
+            "click",
+            onCancel,
+          );
           this.elements.confirmModal.removeEventListener("click", onOverlay);
           window.removeEventListener("keydown", onKey);
           resolve(result);
@@ -1718,7 +1742,10 @@
           else if (e.key === "Enter") cleanup(true);
         };
 
-        this.elements.confirmModalBtnConfirm.addEventListener("click", onConfirm);
+        this.elements.confirmModalBtnConfirm.addEventListener(
+          "click",
+          onConfirm,
+        );
         this.elements.confirmModalBtnCancel.addEventListener("click", onCancel);
         this.elements.confirmModalBtnClose.addEventListener("click", onCancel);
         this.elements.confirmModal.addEventListener("click", onOverlay);
@@ -1749,7 +1776,10 @@
 
         const cleanup = () => {
           this.elements.confirmModal.classList.remove("active");
-          this.elements.confirmModalBtnConfirm.removeEventListener("click", onOk);
+          this.elements.confirmModalBtnConfirm.removeEventListener(
+            "click",
+            onOk,
+          );
           this.elements.confirmModalBtnClose.removeEventListener("click", onOk);
           this.elements.confirmModal.removeEventListener("click", onOverlay);
           window.removeEventListener("keydown", onKey);
@@ -1798,7 +1828,8 @@
     updateMessagesCountBadge() {
       const count = this.messages.length;
       if (this.elements.sidebarMetaRow) {
-        this.elements.sidebarMetaRow.style.display = count > 0 ? "flex" : "none";
+        this.elements.sidebarMetaRow.style.display =
+          count > 0 ? "flex" : "none";
       }
       if (this.elements.messagesCountBadge) {
         const label =
