@@ -236,7 +236,7 @@
         </div>
 
         <!-- Left Sidebar: Opened Emails List -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
           <div class="sidebar-header">
             <div class="search-box">
               <svg
@@ -267,6 +267,22 @@
             <!-- File Items dynamically added here -->
           </div>
         </aside>
+
+        <!-- Resizer Splitter between Sidebar and Preview Area -->
+        <div
+          id="sidebarResizer"
+          class="sidebar-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow="340"
+          aria-valuemin="220"
+          aria-valuemax="800"
+          tabindex="0"
+          title="Drag to resize sidebar (double-click to reset)"
+          data-i18n-title="resizeSidebar"
+        >
+          <div class="resizer-handle"></div>
+        </div>
 
         <!-- Main Panel: Email Content Viewer -->
         <main class="email-view">

@@ -17,6 +17,7 @@ class MsgViewerApp {
 
     this.initDOMElements();
     this.initEventListeners();
+    this.initSidebarResizer();
     this.initTheme();
     this.applyFontZoom();
     this.checkUrlParams();
@@ -28,6 +29,8 @@ class MsgViewerApp {
       dropZoneCard: document.getElementById('dropZoneCard'),
       fileInput: document.getElementById('fileInput'),
       dragOverlay: document.getElementById('dragOverlay'),
+      sidebar: document.getElementById('sidebar'),
+      sidebarResizer: document.getElementById('sidebarResizer'),
       fileList: document.getElementById('fileList'),
       searchInput: document.getElementById('searchInput'),
       emptyState: document.getElementById('emptyState'),
@@ -184,6 +187,137 @@ class MsgViewerApp {
     if (this.elements.btnOpenPathFolder) {
       this.elements.btnOpenPathFolder.addEventListener('click', () => this.openFileLocation());
     }
+  }
+
+  initSidebarResizer() {
+    const sidebar = this.elements.sidebar || document.getElementById('sidebar') || document.querySelector('.sidebar');
+    const resizer = this.elements.sidebarResizer || document.getElementById('sidebarResizer');
+    if (!sidebar || !resizer) return;
+
+    const MIN_WIDTH = 220;
+    const DEFAULT_WIDTH = 340;
+
+    const getMaxWidth = () => {
+      const mainContentWidth = document.querySelector('.main-content')?.clientWidth || window.innerWidth;
+      return Math.max(MIN_WIDTH, mainContentWidth - 320);
+    };
+
+    // Restore saved width from localStorage
+    const savedWidth = parseInt(localStorage.getItem('msg_viewer_sidebar_width'), 10);
+    if (!isNaN(savedWidth) && savedWidth >= MIN_WIDTH) {
+      const maxWidth = getMaxWidth();
+      const initialWidth = Math.min(Math.max(savedWidth, MIN_WIDTH), maxWidth);
+      sidebar.style.width = `${initialWidth}px`;
+      resizer.setAttribute('aria-valuenow', initialWidth);
+    }
+
+    let isDragging = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    const onPointerDown = (e) => {
+      if (e.button !== 0) return; // Only primary mouse button
+      isDragging = true;
+      startX = e.clientX;
+      startWidth = sidebar.getBoundingClientRect().width;
+
+      document.body.classList.add('is-resizing');
+      resizer.classList.add('active');
+
+      if (resizer.setPointerCapture && e.pointerId !== undefined) {
+        try {
+          resizer.setPointerCapture(e.pointerId);
+        } catch (_) {}
+      }
+
+      window.addEventListener('pointermove', onPointerMove, { passive: false });
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerUp);
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const deltaX = e.clientX - startX;
+      const targetWidth = startWidth + deltaX;
+      const maxWidth = getMaxWidth();
+      const clampedWidth = Math.min(Math.max(targetWidth, MIN_WIDTH), maxWidth);
+
+      sidebar.style.width = `${clampedWidth}px`;
+      resizer.setAttribute('aria-valuenow', Math.round(clampedWidth));
+    };
+
+    const onPointerUp = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+
+      document.body.classList.remove('is-resizing');
+      resizer.classList.remove('active');
+
+      if (resizer.releasePointerCapture && e.pointerId !== undefined) {
+        try {
+          resizer.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+      }
+
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+
+      const currentWidth = Math.round(sidebar.getBoundingClientRect().width);
+      localStorage.setItem('msg_viewer_sidebar_width', currentWidth.toString());
+    };
+
+    resizer.addEventListener('pointerdown', onPointerDown);
+
+    // Double-click to reset to default width
+    resizer.addEventListener('dblclick', () => {
+      sidebar.style.width = `${DEFAULT_WIDTH}px`;
+      resizer.setAttribute('aria-valuenow', DEFAULT_WIDTH);
+      localStorage.setItem('msg_viewer_sidebar_width', DEFAULT_WIDTH.toString());
+    });
+
+    // Keyboard accessibility (ArrowLeft, ArrowRight, Home, End, Enter)
+    resizer.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 50 : 20;
+      const currentWidth = sidebar.getBoundingClientRect().width;
+      let newWidth = currentWidth;
+
+      if (e.key === 'ArrowLeft') {
+        newWidth = Math.max(MIN_WIDTH, currentWidth - step);
+        e.preventDefault();
+      } else if (e.key === 'ArrowRight') {
+        newWidth = Math.min(getMaxWidth(), currentWidth + step);
+        e.preventDefault();
+      } else if (e.key === 'Home') {
+        newWidth = MIN_WIDTH;
+        e.preventDefault();
+      } else if (e.key === 'End') {
+        newWidth = getMaxWidth();
+        e.preventDefault();
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        newWidth = DEFAULT_WIDTH;
+        e.preventDefault();
+      } else {
+        return;
+      }
+
+      const rounded = Math.round(newWidth);
+      sidebar.style.width = `${rounded}px`;
+      resizer.setAttribute('aria-valuenow', rounded);
+      localStorage.setItem('msg_viewer_sidebar_width', rounded.toString());
+    });
+
+    // Window resize adaptation
+    window.addEventListener('resize', () => {
+      const currentWidth = sidebar.getBoundingClientRect().width;
+      const maxWidth = getMaxWidth();
+      if (currentWidth > maxWidth) {
+        sidebar.style.width = `${maxWidth}px`;
+        resizer.setAttribute('aria-valuenow', Math.round(maxWidth));
+        localStorage.setItem('msg_viewer_sidebar_width', Math.round(maxWidth).toString());
+      }
+    });
   }
 
   initTheme() {
