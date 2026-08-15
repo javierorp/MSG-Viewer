@@ -56,6 +56,33 @@
         </div>
 
         <div class="top-actions">
+          <!-- Refresh / Reload UI Button -->
+          <button
+            id="btnReload"
+            class="btn btn-icon"
+            title="Recargar interfaz (F5 o Ctrl+F5)"
+            data-i18n-title="reloadApp"
+            aria-label="Recargar interfaz (F5 o Ctrl+F5)"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M16.8 16.8A7 7 0 1 1 13 5.2"
+                stroke="currentColor"
+                stroke-width="2.3"
+                stroke-linecap="round"
+              />
+              <polygon
+                points="12,11.5 18,11.5 18,5.5"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+
           <!-- Language Selector Dropdown -->
           <div class="lang-selector-wrapper">
             <svg
@@ -287,8 +314,14 @@
         <!-- Left Sidebar: Opened Emails List -->
         <aside class="sidebar" id="sidebar">
           <div class="sidebar-header">
-            <div class="sidebar-meta-row" id="sidebarMetaRow" style="display: none;">
-              <span class="sidebar-count-badge" id="messagesCountBadge">0 emails</span>
+            <div
+              class="sidebar-meta-row"
+              id="sidebarMetaRow"
+              style="display: none"
+            >
+              <span class="sidebar-count-badge" id="messagesCountBadge"
+                >0 emails</span
+              >
               <button
                 id="btnClearAll"
                 class="btn-clear-all"
@@ -684,7 +717,7 @@
 
     <!-- About Application Modal Overlay -->
     <div id="aboutModal" class="modal-overlay">
-      <div class="modal-container" style="max-width: 480px;">
+      <div class="modal-container" style="max-width: 480px">
         <div class="modal-header">
           <div class="modal-title">
             <svg
@@ -714,7 +747,7 @@
         </div>
         <div class="about-modal-body">
           <div class="about-brand">
-            <div class="brand-icon" style="width: 48px; height: 48px;">
+            <div class="brand-icon" style="width: 48px; height: 48px">
               <svg
                 width="28"
                 height="28"
@@ -735,31 +768,90 @@
           </div>
 
           <p class="about-desc" data-i18n="aboutDesc">
-            Free, offline, and secure .msg file viewer for Windows without administrator permissions required.
+            Free, offline, and secure .msg file viewer for Windows without
+            administrator permissions required.
           </p>
 
           <div class="about-info-list">
             <div class="about-info-item">
-              <span class="about-info-label" data-i18n="aboutCreator">Creator:</span>
-              <a href="https://javierorp.vercel.app" target="_blank" rel="noopener noreferrer" class="about-link">
+              <span class="about-info-label" data-i18n="aboutCreator"
+                >Creator:</span
+              >
+              <a
+                href="https://javierorp.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="about-link"
+              >
                 Javierorp
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
               </a>
             </div>
 
             <div class="about-info-item">
-              <span class="about-info-label" data-i18n="aboutContact">Contact:</span>
-              <a href="mailto:javierorp@proton.me?subject=%5BMSG-Viewer%5D" class="about-link">
+              <span class="about-info-label" data-i18n="aboutContact"
+                >Contact:</span
+              >
+              <a
+                href="mailto:javierorp@proton.me?subject=%5BMSG-Viewer%5D"
+                class="about-link"
+              >
                 javierorp@proton.me
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
               </a>
             </div>
 
             <div class="about-info-item">
-              <span class="about-info-label" data-i18n="aboutRepo">GitHub Repository:</span>
-              <a href="https://github.com/javierorp/MSG-Viewer" target="_blank" rel="noopener noreferrer" class="about-link">
+              <span class="about-info-label" data-i18n="aboutRepo"
+                >GitHub Repository:</span
+              >
+              <a
+                href="https://github.com/javierorp/MSG-Viewer"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="about-link"
+              >
                 javierorp/MSG-Viewer
-                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                <svg
+                  width="14"
+                  height="14"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
               </a>
             </div>
           </div>
@@ -769,7 +861,7 @@
 
     <!-- Reusable Confirmation / Alert Modal Dialog -->
     <div id="confirmModal" class="modal-overlay">
-      <div class="modal-container" style="max-width: 440px;">
+      <div class="modal-container" style="max-width: 440px">
         <div class="modal-header">
           <div class="modal-title">
             <svg
@@ -797,11 +889,28 @@
             ✕
           </button>
         </div>
-        <div class="modal-body" style="padding: 24px 24px 20px 24px; min-height: unset; flex-direction: column; align-items: stretch; background: var(--bg-secondary);">
-          <p id="confirmModalMessage" style="font-size: 0.95rem; line-height: 1.55; color: var(--text-primary); margin-bottom: 22px;">
+        <div
+          class="modal-body"
+          style="
+            padding: 24px 24px 20px 24px;
+            min-height: unset;
+            flex-direction: column;
+            align-items: stretch;
+            background: var(--bg-secondary);
+          "
+        >
+          <p
+            id="confirmModalMessage"
+            style="
+              font-size: 0.95rem;
+              line-height: 1.55;
+              color: var(--text-primary);
+              margin-bottom: 22px;
+            "
+          >
             ¿Deseas eliminar todos los correos guardados de la lista?
           </p>
-          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <div style="display: flex; gap: 10px; justify-content: flex-end">
             <button id="confirmModalBtnCancel" class="btn btn-secondary">
               Cancelar
             </button>

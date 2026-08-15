@@ -137,6 +137,7 @@ class MsgViewerApp {
       // Actions
       btnOpen: document.getElementById('btnOpen'),
       btnPrint: document.getElementById('btnPrint'),
+      btnReload: document.getElementById('btnReload'),
       btnThemeToggle: document.getElementById('btnThemeToggle'),
       iconTheme: document.getElementById('iconTheme')
     };
@@ -259,6 +260,15 @@ class MsgViewerApp {
     }
 
     window.addEventListener('keydown', (e) => {
+      if (
+        e.key === 'F5' ||
+        ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R'))
+      ) {
+        e.preventDefault();
+        window.location.reload();
+        return;
+      }
+
       if (e.ctrlKey || e.metaKey) {
         if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
           e.preventDefault();
@@ -272,6 +282,12 @@ class MsgViewerApp {
         }
       }
     });
+
+    if (this.elements.btnReload) {
+      this.elements.btnReload.addEventListener('click', () => {
+        window.location.reload();
+      });
+    }
 
     // Theme toggle
     if (this.elements.btnThemeToggle) {

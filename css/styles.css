@@ -273,6 +273,19 @@ html, body {
   color: var(--text-primary);
 }
 
+#btnReload svg {
+  transition: transform var(--transition-normal);
+}
+
+#btnReload:hover svg {
+  transform: rotate(45deg);
+}
+
+#btnReload:active svg {
+  transform: rotate(360deg);
+  transition: transform var(--transition-fast);
+}
+
 .btn-xs {
   padding: 4px 10px;
   font-size: 0.78rem;

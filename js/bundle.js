@@ -74,6 +74,7 @@
       clearAllConfirm:
         "¿Deseas eliminar todos los correos guardados de la lista?",
       removeMsg: "Eliminar correo de la lista",
+      reloadApp: "Recargar interfaz",
       emailCountSingular: "correo",
       emailsCountPlural: "correos",
       modalConfirm: "Aceptar",
@@ -135,6 +136,7 @@
       clearAllTitle: "Remove all saved emails from list",
       clearAllConfirm: "Do you want to remove all saved emails from the list?",
       removeMsg: "Remove email from list",
+      reloadApp: "Reload interface",
       emailCountSingular: "email",
       emailsCountPlural: "emails",
       modalConfirm: "OK",
@@ -173,7 +175,10 @@
     const emailInE = e.match(/<([^>]+@[^>]+)>/);
     if (emailInE) {
       if (!n) {
-        n = e.replace(/<[^>]+>/, "").replace(/^"|"$/g, "").trim();
+        n = e
+          .replace(/<[^>]+>/, "")
+          .replace(/^"|"$/g, "")
+          .trim();
       }
       e = emailInE[1].trim();
     }
@@ -182,8 +187,15 @@
     const emailInN = n.match(/<([^>]+@[^>]+)>/);
     if (emailInN) {
       const extractedEmail = emailInN[1].trim();
-      const extractedName = n.replace(/<[^>]+>/, "").replace(/^"|"$/g, "").trim();
-      if (!e || e.toLowerCase() === n.toLowerCase() || e.toLowerCase() === extractedEmail.toLowerCase()) {
+      const extractedName = n
+        .replace(/<[^>]+>/, "")
+        .replace(/^"|"$/g, "")
+        .trim();
+      if (
+        !e ||
+        e.toLowerCase() === n.toLowerCase() ||
+        e.toLowerCase() === extractedEmail.toLowerCase()
+      ) {
         e = extractedEmail;
         n = extractedName;
       } else if (n.toLowerCase().includes(e.toLowerCase())) {
@@ -867,20 +879,31 @@
 
       // Clean and normalize senderName and senderEmail
       if (msgData.senderName) {
-        const match = msgData.senderName.match(/^(?:"?([^"]*?)"?\s*)?<([^>]+@[^>]+)>$/);
+        const match = msgData.senderName.match(
+          /^(?:"?([^"]*?)"?\s*)?<([^>]+@[^>]+)>$/,
+        );
         if (match) {
           const extractedName = (match[1] || "").trim();
           const extractedEmail = (match[2] || "").trim();
           if (!msgData.senderEmail && extractedEmail) {
             msgData.senderEmail = extractedEmail;
           }
-          msgData.senderName = extractedName || (msgData.senderEmail ? "" : extractedEmail);
-        } else if (!msgData.senderEmail && msgData.senderName.includes("@") && !msgData.senderName.includes(" ")) {
+          msgData.senderName =
+            extractedName || (msgData.senderEmail ? "" : extractedEmail);
+        } else if (
+          !msgData.senderEmail &&
+          msgData.senderName.includes("@") &&
+          !msgData.senderName.includes(" ")
+        ) {
           msgData.senderEmail = msgData.senderName;
           msgData.senderName = "";
         }
       }
-      if (msgData.senderEmail && msgData.senderName && msgData.senderName.toLowerCase() === msgData.senderEmail.toLowerCase()) {
+      if (
+        msgData.senderEmail &&
+        msgData.senderName &&
+        msgData.senderName.toLowerCase() === msgData.senderEmail.toLowerCase()
+      ) {
         msgData.senderName = "";
       }
 
@@ -1179,6 +1202,7 @@
         btnOpen: document.getElementById("btnOpen"),
         btnOpenFolder: document.getElementById("btnOpenFolder"),
         btnPrint: document.getElementById("btnPrint"),
+        btnReload: document.getElementById("btnReload"),
         btnThemeToggle: document.getElementById("btnThemeToggle"),
         btnAbout: document.getElementById("btnAbout"),
         iconTheme: document.getElementById("iconTheme"),
@@ -1367,6 +1391,15 @@
       }
 
       window.addEventListener("keydown", (e) => {
+        if (
+          e.key === "F5" ||
+          ((e.ctrlKey || e.metaKey) && (e.key === "r" || e.key === "R"))
+        ) {
+          e.preventDefault();
+          window.location.reload();
+          return;
+        }
+
         if (e.ctrlKey || e.metaKey) {
           if (e.key === "+" || e.key === "=" || e.code === "NumpadAdd") {
             e.preventDefault();
@@ -1384,6 +1417,12 @@
           }
         }
       });
+
+      if (this.elements.btnReload) {
+        this.elements.btnReload.addEventListener("click", () => {
+          window.location.reload();
+        });
+      }
 
       if (this.elements.btnThemeToggle) {
         this.elements.btnThemeToggle.addEventListener("click", () =>
@@ -2027,7 +2066,7 @@
         const senderStr = formatSenderDisplay(
           msg.senderName,
           msg.senderEmail,
-          this.t("unknownSender")
+          this.t("unknownSender"),
         );
 
         const dateStr = formatDateString(msg.date) || this.t("noDate");
@@ -2064,7 +2103,11 @@
       const items = this.elements.fileList.children;
 
       this.messages.forEach((msg, idx) => {
-        const senderStr = formatSenderDisplay(msg.senderName, msg.senderEmail, "");
+        const senderStr = formatSenderDisplay(
+          msg.senderName,
+          msg.senderEmail,
+          "",
+        );
         const match =
           (msg.subject && msg.subject.toLowerCase().includes(q)) ||
           (msg.senderName && msg.senderName.toLowerCase().includes(q)) ||
@@ -2098,7 +2141,7 @@
       this.elements.emailSender.textContent = formatSenderDisplay(
         msg.senderName,
         msg.senderEmail,
-        this.t("unknownSender")
+        this.t("unknownSender"),
       );
       this.elements.emailTo.textContent =
         msg.displayTo || this.t("noRecipients");
