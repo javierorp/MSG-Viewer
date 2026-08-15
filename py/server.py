@@ -16,6 +16,7 @@ import subprocess
 import threading
 from urllib.parse import urlparse, parse_qs, unquote, quote
 import extract_msg
+import email.utils
 
 # Safe stdout/stderr redirection for pythonw (GUI mode without console)
 if sys.stdout is None:
@@ -196,10 +197,40 @@ def extract_msg_data(msg, file_path=None):
         except Exception:
             pass
 
+    # Clean sender extraction
+    sender_raw = str(msg.sender or "").strip()
+    sender_name = ""
+    sender_email = ""
+
+    if sender_raw:
+        parsed_name, parsed_email = email.utils.parseaddr(sender_raw)
+        if parsed_name:
+            sender_name = parsed_name.strip('"\' ')
+        if parsed_email and '@' in parsed_email:
+            sender_email = parsed_email.strip()
+        elif not sender_name:
+            if '@' in sender_raw:
+                sender_email = sender_raw
+            else:
+                sender_name = sender_raw
+
+    # Check for additional sender properties if available
+    if not sender_name:
+        s_name = getattr(msg, 'senderName', None) or getattr(msg, 'sender_name', None)
+        if s_name:
+            sender_name = str(s_name).strip('"\' ')
+    if not sender_email:
+        s_email = getattr(msg, 'senderEmail', None) or getattr(msg, 'sender_email', None)
+        if s_email and '@' in str(s_email):
+            sender_email = str(s_email).strip()
+
+    if sender_name and sender_email and sender_name.lower() == sender_email.lower():
+        sender_name = ""
+
     response_data = {
         "subject": msg.subject or "(No Subject)",
-        "senderName": msg.sender or "",
-        "senderEmail": msg.sender or "",
+        "senderName": sender_name,
+        "senderEmail": sender_email,
         "displayTo": msg.to or "",
         "displayCc": msg.cc or "",
         "bodyText": body_text,

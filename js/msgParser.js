@@ -270,9 +270,23 @@ export class MsgParser {
       }
     }
 
-    // Fallback: If no senderEmail but senderName exists
-    if (!msgData.senderEmail && msgData.senderName) {
-      msgData.senderEmail = msgData.senderName;
+    // Clean and normalize senderName and senderEmail
+    if (msgData.senderName) {
+      const match = msgData.senderName.match(/^(?:"?([^"]*?)"?\s*)?<([^>]+@[^>]+)>$/);
+      if (match) {
+        const extractedName = (match[1] || '').trim();
+        const extractedEmail = (match[2] || '').trim();
+        if (!msgData.senderEmail && extractedEmail) {
+          msgData.senderEmail = extractedEmail;
+        }
+        msgData.senderName = extractedName || (msgData.senderEmail ? '' : extractedEmail);
+      } else if (!msgData.senderEmail && msgData.senderName.includes('@') && !msgData.senderName.includes(' ')) {
+        msgData.senderEmail = msgData.senderName;
+        msgData.senderName = '';
+      }
+    }
+    if (msgData.senderEmail && msgData.senderName && msgData.senderName.toLowerCase() === msgData.senderEmail.toLowerCase()) {
+      msgData.senderName = '';
     }
 
     return msgData;

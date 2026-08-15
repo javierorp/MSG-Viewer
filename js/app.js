@@ -3,6 +3,68 @@ import { sanitizeHtml, escapeHtml } from './sanitizer.js';
 
 const API_BASE = window.location.protocol.startsWith('http') ? '' : 'http://127.0.0.1:8080';
 
+// Helper function to format sender display cleanly without duplicates
+function formatSenderDisplay(name, email, fallback = 'Unknown') {
+  let n = (name || '').trim();
+  let e = (email || '').trim();
+
+  // Strip surrounding angle brackets from email if present
+  if (e.startsWith('<') && e.endsWith('>')) {
+    e = e.slice(1, -1).trim();
+  }
+
+  // If email string contains a full 'Name <email@domain>' or '<email@domain>'
+  const emailInE = e.match(/<([^>]+@[^>]+)>/);
+  if (emailInE) {
+    if (!n) {
+      n = e.replace(/<[^>]+>/, '').replace(/^"|"$/g, '').trim();
+    }
+    e = emailInE[1].trim();
+  }
+
+  // If name string contains '<email@domain>'
+  const emailInN = n.match(/<([^>]+@[^>]+)>/);
+  if (emailInN) {
+    const extractedEmail = emailInN[1].trim();
+    const extractedName = n.replace(/<[^>]+>/, '').replace(/^"|"$/g, '').trim();
+    if (!e || e.toLowerCase() === n.toLowerCase() || e.toLowerCase() === extractedEmail.toLowerCase()) {
+      e = extractedEmail;
+      n = extractedName;
+    } else if (n.toLowerCase().includes(e.toLowerCase())) {
+      n = extractedName;
+    }
+  }
+
+  // If email is not a valid email address (no @) and name is missing, use email as name
+  if (e && !e.includes('@')) {
+    if (!n) n = e;
+    e = '';
+  }
+
+  // If name is an email address and email is empty
+  if (!e && n.includes('@') && !n.includes(' ')) {
+    e = n;
+    n = '';
+  }
+
+  // If name and email are identical (case-insensitive)
+  if (n && e && n.toLowerCase() === e.toLowerCase()) {
+    n = '';
+  }
+
+  // Both name and email present
+  if (n && e) {
+    if (n.includes(`<${e}>`) || n.endsWith(`(${e})`)) {
+      return n;
+    }
+    return `${n} <${e}>`;
+  }
+
+  if (n) return n;
+  if (e) return e;
+  return fallback;
+}
+
 class MsgViewerApp {
   constructor() {
     this.messages = [];
@@ -413,10 +475,11 @@ class MsgViewerApp {
     this.messages.forEach((msg, idx) => {
       const item = document.createElement('div');
       item.className = `file-item ${idx === this.currentMsgIndex ? 'active' : ''}`;
+      const senderStr = formatSenderDisplay(msg.senderName, msg.senderEmail, 'Unknown');
       item.innerHTML = `
         <div class="file-item-subject">${escapeHtml(msg.subject || '(No Subject)')}</div>
         <div class="file-item-meta">
-          <span class="file-item-sender">${escapeHtml(msg.senderName || msg.senderEmail || 'Unknown')}</span>
+          <span class="file-item-sender">${escapeHtml(senderStr)}</span>
           <span>${msg.attachments ? msg.attachments.length + ' 📎' : ''}</span>
         </div>
       `;
@@ -431,9 +494,11 @@ class MsgViewerApp {
     const items = this.elements.fileList.children;
     
     this.messages.forEach((msg, idx) => {
+      const senderStr = formatSenderDisplay(msg.senderName, msg.senderEmail, '');
       const match = (msg.subject && msg.subject.toLowerCase().includes(q)) ||
                     (msg.senderName && msg.senderName.toLowerCase().includes(q)) ||
-                    (msg.senderEmail && msg.senderEmail.toLowerCase().includes(q));
+                    (msg.senderEmail && msg.senderEmail.toLowerCase().includes(q)) ||
+                    (senderStr && senderStr.toLowerCase().includes(q));
       
       if (items[idx]) {
         items[idx].style.display = match ? 'flex' : 'none';
@@ -458,7 +523,7 @@ class MsgViewerApp {
 
     // Populate Header Fields
     this.elements.emailSubject.textContent = msg.subject || '(No Subject)';
-    this.elements.emailSender.textContent = msg.senderEmail ? `${msg.senderName} <${msg.senderEmail}>` : (msg.senderName || 'Unknown');
+    this.elements.emailSender.textContent = formatSenderDisplay(msg.senderName, msg.senderEmail, 'Unknown');
     this.elements.emailTo.textContent = msg.displayTo || '(No Recipients)';
     
     if (msg.displayCc) {

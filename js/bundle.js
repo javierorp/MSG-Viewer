@@ -153,6 +153,69 @@
     return String(dateVal);
   }
 
+  // Helper function to format sender display cleanly without duplicates
+  function formatSenderDisplay(name, email, fallback = "Unknown") {
+    let n = (name || "").trim();
+    let e = (email || "").trim();
+
+    // Strip surrounding angle brackets from email if present
+    if (e.startsWith("<") && e.endsWith(">")) {
+      e = e.slice(1, -1).trim();
+    }
+
+    // If email string contains a full 'Name <email@domain>' or '<email@domain>'
+    const emailInE = e.match(/<([^>]+@[^>]+)>/);
+    if (emailInE) {
+      if (!n) {
+        n = e.replace(/<[^>]+>/, "").replace(/^"|"$/g, "").trim();
+      }
+      e = emailInE[1].trim();
+    }
+
+    // If name string contains '<email@domain>'
+    const emailInN = n.match(/<([^>]+@[^>]+)>/);
+    if (emailInN) {
+      const extractedEmail = emailInN[1].trim();
+      const extractedName = n.replace(/<[^>]+>/, "").replace(/^"|"$/g, "").trim();
+      if (!e || e.toLowerCase() === n.toLowerCase() || e.toLowerCase() === extractedEmail.toLowerCase()) {
+        e = extractedEmail;
+        n = extractedName;
+      } else if (n.toLowerCase().includes(e.toLowerCase())) {
+        n = extractedName;
+      }
+    }
+
+    // If email is not a valid email address (no @) and name is missing, use email as name
+    if (e && !e.includes("@")) {
+      if (!n) n = e;
+      e = "";
+    }
+
+    // If name is an email address and email is empty
+    if (!e && n.includes("@") && !n.includes(" ")) {
+      e = n;
+      n = "";
+    }
+
+    // If name and email are identical (case-insensitive)
+    if (n && e && n.toLowerCase() === e.toLowerCase()) {
+      n = "";
+    }
+
+    // Both name and email present
+    if (n && e) {
+      // If name already ends with the email in brackets
+      if (n.includes(`<${e}>`) || n.endsWith(`(${e})`)) {
+        return n;
+      }
+      return `${n} <${e}>`;
+    }
+
+    if (n) return n;
+    if (e) return e;
+    return fallback;
+  }
+
   // Clean garbled characters and unicode replacement noise
   function cleanGarbledText(str) {
     if (!str) return "";
@@ -796,8 +859,23 @@
         }
       }
 
-      if (!msgData.senderEmail && msgData.senderName) {
-        msgData.senderEmail = msgData.senderName;
+      // Clean and normalize senderName and senderEmail
+      if (msgData.senderName) {
+        const match = msgData.senderName.match(/^(?:"?([^"]*?)"?\s*)?<([^>]+@[^>]+)>$/);
+        if (match) {
+          const extractedName = (match[1] || "").trim();
+          const extractedEmail = (match[2] || "").trim();
+          if (!msgData.senderEmail && extractedEmail) {
+            msgData.senderEmail = extractedEmail;
+          }
+          msgData.senderName = extractedName || (msgData.senderEmail ? "" : extractedEmail);
+        } else if (!msgData.senderEmail && msgData.senderName.includes("@") && !msgData.senderName.includes(" ")) {
+          msgData.senderEmail = msgData.senderName;
+          msgData.senderName = "";
+        }
+      }
+      if (msgData.senderEmail && msgData.senderName && msgData.senderName.toLowerCase() === msgData.senderEmail.toLowerCase()) {
+        msgData.senderName = "";
       }
 
       return msgData;
@@ -1890,12 +1968,11 @@
         const item = document.createElement("div");
         item.className = `file-item ${idx === this.currentMsgIndex ? "active" : ""}`;
 
-        const senderStr =
-          msg.senderName &&
-          msg.senderEmail &&
-          !msg.senderName.includes(msg.senderEmail)
-            ? `${msg.senderName} <${msg.senderEmail}>`
-            : msg.senderName || msg.senderEmail || this.t("unknownSender");
+        const senderStr = formatSenderDisplay(
+          msg.senderName,
+          msg.senderEmail,
+          this.t("unknownSender")
+        );
 
         const dateStr = formatDateString(msg.date) || this.t("noDate");
 
@@ -1931,10 +2008,12 @@
       const items = this.elements.fileList.children;
 
       this.messages.forEach((msg, idx) => {
+        const senderStr = formatSenderDisplay(msg.senderName, msg.senderEmail, "");
         const match =
           (msg.subject && msg.subject.toLowerCase().includes(q)) ||
           (msg.senderName && msg.senderName.toLowerCase().includes(q)) ||
-          (msg.senderEmail && msg.senderEmail.toLowerCase().includes(q));
+          (msg.senderEmail && msg.senderEmail.toLowerCase().includes(q)) ||
+          (senderStr && senderStr.toLowerCase().includes(q));
 
         if (items[idx]) {
           items[idx].style.display = match ? "flex" : "none";
@@ -1960,9 +2039,11 @@
 
       this.elements.emailSubject.textContent =
         msg.subject || this.t("noSubject");
-      this.elements.emailSender.textContent = msg.senderEmail
-        ? `${msg.senderName} <${msg.senderEmail}>`
-        : msg.senderName || this.t("unknownSender");
+      this.elements.emailSender.textContent = formatSenderDisplay(
+        msg.senderName,
+        msg.senderEmail,
+        this.t("unknownSender")
+      );
       this.elements.emailTo.textContent =
         msg.displayTo || this.t("noRecipients");
 
