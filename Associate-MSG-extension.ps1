@@ -1,6 +1,6 @@
 # Script to associate .msg extension with MSG Viewer (Without Administrator permissions)
 
-$AppPath = "$PSScriptRoot\index.html".Replace("\", "/")
+$LauncherPath = "$PSScriptRoot\MSG-Viewer.vbs"
 Write-Host "Associating .msg files with MSG Viewer..." -ForegroundColor Green
 
 $RegPath = "HKCU:\Software\Classes\.msg"
@@ -22,9 +22,8 @@ if (-not (Test-Path $CommandPath)) {
     New-Item -Path $CommandPath -Force | Out-Null
 }
 
-$ExecCommand = "msedge.exe --app=`"file:///$AppPath`""
+$ExecCommand = "wscript.exe `"$LauncherPath`" `"%1`""
 Set-ItemProperty -Path $CommandPath -Name "(Default)" -Value $ExecCommand
 
 Write-Host "File association completed successfully for the current user!" -ForegroundColor Cyan
 Write-Host "Now you can double-click any .msg file to open it in the application." -ForegroundColor Green
-

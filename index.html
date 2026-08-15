@@ -331,6 +331,33 @@
                   <span class="meta-label" data-i18n="labelCc">CC:</span>
                   <span class="meta-value" id="emailCc"></span>
                 </div>
+
+                <span class="meta-label" data-i18n="labelPath">Path:</span>
+                <div class="meta-value path-meta-value" id="emailPathContainer">
+                  <span class="email-path-text" id="emailPath"></span>
+                  <button
+                    id="btnOpenPathFolder"
+                    class="btn btn-secondary btn-xs btn-open-folder"
+                    title="Open folder containing this file"
+                    data-i18n-title="openFolderLocationTitle"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                      />
+                    </svg>
+                    <span data-i18n="openFolderLocation">Open Folder</span>
+                  </button>
+                </div>
               </div>
 
               <div
@@ -351,7 +378,6 @@
                   </button>
                   <button id="tabText" class="tab-btn" data-i18n="tabText">
                     Plain Text
-                  </button>
                   </button>
                 </div>
               </div>

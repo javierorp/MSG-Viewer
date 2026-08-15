@@ -1,6 +1,8 @@
 import { MsgParser } from './msgParser.js';
 import { sanitizeHtml, escapeHtml } from './sanitizer.js';
 
+const API_BASE = window.location.protocol.startsWith('http') ? '' : 'http://127.0.0.1:8080';
+
 class MsgViewerApp {
   constructor() {
     this.messages = [];
@@ -10,6 +12,7 @@ class MsgViewerApp {
     this.initDOMElements();
     this.initEventListeners();
     this.initTheme();
+    this.checkUrlParams();
   }
 
   initDOMElements() {
@@ -29,6 +32,8 @@ class MsgViewerApp {
       emailTo: document.getElementById('emailTo'),
       emailCcRow: document.getElementById('emailCcRow'),
       emailCc: document.getElementById('emailCc'),
+      emailPath: document.getElementById('emailPath'),
+      btnOpenPathFolder: document.getElementById('btnOpenPathFolder'),
       emailDate: document.getElementById('emailDate'),
       
       // View Controls & Content
@@ -49,42 +54,115 @@ class MsgViewerApp {
   }
 
   initEventListeners() {
+    const openFilePicker = async (e) => {
+      if (e) e.stopPropagation();
+      try {
+        const response = await fetch(`${API_BASE}/api/pick-files`, { method: 'POST' });
+        if (response.ok) {
+          const data = await response.json();
+          if (!data.cancelled && data.messages && data.messages.length > 0) {
+            data.messages.forEach(msg => {
+              this.messages.push(msg);
+            });
+            this.renderSidebarList();
+            this.selectMessage(this.messages.length - data.messages.length);
+            return;
+          } else if (data.cancelled) {
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend picker unavailable, using fallback input:', err);
+      }
+      if (this.elements.fileInput) {
+        this.elements.fileInput.click();
+      }
+    };
+
+    const openFolderPicker = async (e) => {
+      if (e) e.stopPropagation();
+      try {
+        const response = await fetch(`${API_BASE}/api/pick-folder`, { method: 'POST' });
+        if (response.ok) {
+          const data = await response.json();
+          if (!data.cancelled && data.messages && data.messages.length > 0) {
+            data.messages.forEach(msg => {
+              this.messages.push(msg);
+            });
+            this.renderSidebarList();
+            this.selectMessage(this.messages.length - data.messages.length);
+            return;
+          } else if (data.cancelled) {
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Backend folder picker unavailable:', err);
+      }
+      if (this.elements.fileInput) {
+        this.elements.fileInput.click();
+      }
+    };
+
     // File input change
-    this.elements.fileInput.addEventListener('change', (e) => this.handleFilesSelected(e.target.files));
-    this.elements.btnOpen.addEventListener('click', () => this.elements.fileInput.click());
-    this.elements.dropZoneCard.addEventListener('click', () => this.elements.fileInput.click());
+    if (this.elements.fileInput) {
+      this.elements.fileInput.addEventListener('change', (e) => this.handleFilesSelected(e.target.files));
+    }
+    if (this.elements.btnOpen) {
+      this.elements.btnOpen.addEventListener('click', openFilePicker);
+    }
+    if (this.elements.dropZoneCard) {
+      this.elements.dropZoneCard.addEventListener('click', openFilePicker);
+    }
 
     // Drag and Drop Events on Window
     window.addEventListener('dragover', (e) => {
       e.preventDefault();
-      this.elements.dragOverlay.classList.add('active');
+      if (this.elements.dragOverlay) this.elements.dragOverlay.classList.add('active');
     });
 
-    this.elements.dragOverlay.addEventListener('dragleave', (e) => {
-      e.preventDefault();
-      this.elements.dragOverlay.classList.remove('active');
-    });
+    if (this.elements.dragOverlay) {
+      this.elements.dragOverlay.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        this.elements.dragOverlay.classList.remove('active');
+      });
+    }
 
     window.addEventListener('drop', (e) => {
       e.preventDefault();
-      this.elements.dragOverlay.classList.remove('active');
+      if (this.elements.dragOverlay) this.elements.dragOverlay.classList.remove('active');
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         this.handleFilesSelected(e.dataTransfer.files);
       }
     });
 
     // Search filter
-    this.elements.searchInput.addEventListener('input', (e) => this.filterFileList(e.target.value));
+    if (this.elements.searchInput) {
+      this.elements.searchInput.addEventListener('input', (e) => this.filterFileList(e.target.value));
+    }
 
     // View mode tabs
-    this.elements.tabHtml.addEventListener('click', () => this.setViewMode('html'));
-    this.elements.tabText.addEventListener('click', () => this.setViewMode('text'));
+    if (this.elements.tabHtml) {
+      this.elements.tabHtml.addEventListener('click', () => this.setViewMode('html'));
+    }
+    if (this.elements.tabText) {
+      this.elements.tabText.addEventListener('click', () => this.setViewMode('text'));
+    }
 
     // Theme toggle
-    this.elements.btnThemeToggle.addEventListener('click', () => this.toggleTheme());
+    if (this.elements.btnThemeToggle) {
+      this.elements.btnThemeToggle.addEventListener('click', () => this.toggleTheme());
+    }
 
     // Print button
-    this.elements.btnPrint.addEventListener('click', () => window.print());
+    if (this.elements.btnPrint) {
+      this.elements.btnPrint.addEventListener('click', () => window.print());
+    }
+
+    // Open Folder Location button
+    if (this.elements.btnOpenPathFolder) {
+      this.elements.btnOpenPathFolder.addEventListener('click', () => this.openFileLocation());
+    }
   }
 
   initTheme() {
@@ -97,16 +175,38 @@ class MsgViewerApp {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('msg_viewer_theme', theme);
     
-    if (theme === 'dark') {
-      this.elements.iconTheme.setAttribute('d', 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z');
-    } else {
-      this.elements.iconTheme.setAttribute('d', 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z');
+    if (this.elements.iconTheme) {
+      if (theme === 'dark') {
+        this.elements.iconTheme.setAttribute('d', 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z');
+      } else {
+        this.elements.iconTheme.setAttribute('d', 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z');
+      }
     }
   }
 
   toggleTheme() {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     this.setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  }
+
+  async parseMsgWithServer(arrayBuffer, file) {
+    try {
+      const headers = { 'Content-Type': 'application/octet-stream' };
+      if (file) {
+        headers['X-File-Name'] = encodeURIComponent(file.name || '');
+        headers['X-File-Size'] = String(file.size || 0);
+      }
+      const response = await fetch(`${API_BASE}/api/parse`, {
+        method: 'POST',
+        headers: headers,
+        body: arrayBuffer,
+      });
+
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (err) {}
+    return null;
   }
 
   async handleFilesSelected(files) {
@@ -119,11 +219,16 @@ class MsgViewerApp {
     for (const file of msgFiles) {
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const parser = new MsgParser(arrayBuffer);
-        const parsedData = parser.parse();
+        let parsedData = await this.parseMsgWithServer(arrayBuffer, file);
+
+        if (!parsedData) {
+          const parser = new MsgParser(arrayBuffer);
+          parsedData = parser.parse();
+        }
         
         parsedData.fileName = file.name;
         parsedData.fileSize = file.size;
+        parsedData.filePath = parsedData.filePath || file.path || file.webkitRelativePath || file.name;
         
         this.messages.push(parsedData);
       } catch (err) {
@@ -193,29 +298,38 @@ class MsgViewerApp {
     this.elements.emailTo.textContent = msg.displayTo || '(No Recipients)';
     
     if (msg.displayCc) {
-      this.elements.emailCcRow.style.display = 'grid';
+      this.elements.emailCcRow.style.display = 'contents';
       this.elements.emailCc.textContent = msg.displayCc;
     } else {
       this.elements.emailCcRow.style.display = 'none';
     }
 
+    // Populate Path Field
+    const currentPath = msg.filePath || msg.fileName || '';
+    if (this.elements.emailPath) {
+      this.elements.emailPath.textContent = currentPath;
+      this.elements.emailPath.title = currentPath;
+    }
+
     // Attachments
-    this.elements.attachmentsList.innerHTML = '';
-    if (msg.attachments && msg.attachments.length > 0) {
-      this.elements.attachmentsBar.style.display = 'flex';
-      msg.attachments.forEach(att => {
-        const tag = document.createElement('div');
-        tag.className = 'attachment-tag';
-        tag.innerHTML = `
-          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-          <span>${escapeHtml(att.fileName)}</span>
-          <span style="opacity: 0.6; font-size: 0.75rem;">(${this.formatBytes(att.size)})</span>
-        `;
-        tag.addEventListener('click', () => this.downloadAttachment(att));
-        this.elements.attachmentsList.appendChild(tag);
-      });
-    } else {
-      this.elements.attachmentsBar.style.display = 'none';
+    if (this.elements.attachmentsList) {
+      this.elements.attachmentsList.innerHTML = '';
+      if (msg.attachments && msg.attachments.length > 0) {
+        if (this.elements.attachmentsBar) this.elements.attachmentsBar.style.display = 'flex';
+        msg.attachments.forEach(att => {
+          const tag = document.createElement('div');
+          tag.className = 'attachment-tag';
+          tag.innerHTML = `
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+            <span>${escapeHtml(att.fileName)}</span>
+            <span style="opacity: 0.6; font-size: 0.75rem;">(${this.formatBytes(att.size)})</span>
+          `;
+          tag.addEventListener('click', () => this.downloadAttachment(att));
+          this.elements.attachmentsList.appendChild(tag);
+        });
+      } else {
+        if (this.elements.attachmentsBar) this.elements.attachmentsBar.style.display = 'none';
+      }
     }
 
     // Set Initial View (HTML if available, else Plain Text)
@@ -285,6 +399,103 @@ class MsgViewerApp {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  checkUrlParams() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      let filePath = urlParams.get('file');
+      if (!filePath && window.location.hash) {
+        const match = window.location.hash.match(/file=([^&]+)/);
+        if (match) filePath = decodeURIComponent(match[1]);
+      }
+      if (filePath) {
+        this.loadFileFromPath(filePath);
+      }
+    } catch (e) {
+      console.error('Error parsing URL params:', e);
+    }
+  }
+
+  async loadFileFromPath(filePath) {
+    try {
+      const response = await fetch(`${API_BASE}/api/load-file?path=${encodeURIComponent(filePath)}`);
+      if (response.ok) {
+        const data = await response.json();
+        data.filePath = data.filePath || filePath;
+        data.fileName = data.fileName || filePath.split(/[\\/]/).pop() || 'message.msg';
+        this.messages.push(data);
+        this.renderSidebarList();
+        this.selectMessage(this.messages.length - 1);
+      }
+    } catch (err) {
+      console.error('Error loading file from path:', err);
+    }
+  }
+
+  async openFileLocation(msg) {
+    if (!msg) {
+      msg = this.messages[this.currentMsgIndex];
+    }
+    if (!msg) return;
+
+    const path = msg.filePath || msg.fileName || '';
+    const btn = this.elements.btnOpenPathFolder;
+    const originalHtml = btn ? btn.innerHTML : '';
+
+    try {
+      const response = await fetch(`${API_BASE}/api/open-folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: path }),
+      });
+
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.success) {
+          if (resData.opened && msg.filePath !== resData.opened) {
+            msg.filePath = resData.opened;
+            if (this.elements.emailPath) {
+              this.elements.emailPath.textContent = resData.opened;
+              this.elements.emailPath.title = resData.opened;
+            }
+          }
+          if (btn) {
+            btn.classList.add('btn-success');
+            btn.innerHTML = `
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span>Opened</span>
+            `;
+            setTimeout(() => {
+              btn.classList.remove('btn-success');
+              btn.innerHTML = originalHtml;
+            }, 2000);
+          }
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Backend server not available for opening folder:', err);
+    }
+
+    if (navigator.clipboard && path) {
+      try {
+        await navigator.clipboard.writeText(path);
+        if (btn) {
+          btn.innerHTML = `
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+            </svg>
+            <span>Copied</span>
+          `;
+          setTimeout(() => {
+            btn.innerHTML = originalHtml;
+          }, 2000);
+        }
+      } catch (clipErr) {}
+    }
   }
 }
 

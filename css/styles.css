@@ -500,6 +500,68 @@ html, body {
   word-break: break-all;
 }
 
+#emailCcRow {
+  display: contents;
+}
+
+.path-meta-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.email-path-text {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  background-color: var(--bg-tertiary);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  word-break: break-all;
+  max-width: 100%;
+  user-select: text;
+  cursor: text;
+  display: inline-block;
+  line-height: 1.4;
+}
+
+.btn-open-folder {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+}
+
+.btn-open-folder:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+.btn-open-folder:active {
+  transform: translateY(0);
+}
+
+.btn-open-folder.btn-success {
+  background-color: var(--success);
+  border-color: var(--success);
+  color: #ffffff;
+}
+
 /* Attachments Section */
 .attachments-section {
   display: flex;
