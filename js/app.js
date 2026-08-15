@@ -9,9 +9,16 @@ class MsgViewerApp {
     this.currentMsgIndex = -1;
     this.viewMode = 'html'; // 'html' or 'text'
     
+    // Font zoom level (60% to 250%, default 100%)
+    this.fontZoom = parseInt(localStorage.getItem('msg_viewer_font_zoom') || '100', 10);
+    if (isNaN(this.fontZoom) || this.fontZoom < 60 || this.fontZoom > 250) {
+      this.fontZoom = 100;
+    }
+
     this.initDOMElements();
     this.initEventListeners();
     this.initTheme();
+    this.applyFontZoom();
     this.checkUrlParams();
   }
 
@@ -39,6 +46,10 @@ class MsgViewerApp {
       // View Controls & Content
       tabHtml: document.getElementById('tabHtml'),
       tabText: document.getElementById('tabText'),
+      btnFontDecrease: document.getElementById('btnFontDecrease'),
+      btnFontIncrease: document.getElementById('btnFontIncrease'),
+      btnFontReset: document.getElementById('btnFontReset'),
+      fontZoomLevel: document.getElementById('fontZoomLevel'),
       attachmentsBar: document.getElementById('attachmentsBar'),
       attachmentsList: document.getElementById('attachmentsList'),
       bodyWrapper: document.getElementById('bodyWrapper'),
@@ -147,6 +158,16 @@ class MsgViewerApp {
     }
     if (this.elements.tabText) {
       this.elements.tabText.addEventListener('click', () => this.setViewMode('text'));
+    }
+
+    if (this.elements.btnFontDecrease) {
+      this.elements.btnFontDecrease.addEventListener('click', () => this.changeFontZoom(-10));
+    }
+    if (this.elements.btnFontIncrease) {
+      this.elements.btnFontIncrease.addEventListener('click', () => this.changeFontZoom(10));
+    }
+    if (this.elements.btnFontReset) {
+      this.elements.btnFontReset.addEventListener('click', () => this.resetFontZoom());
     }
 
     // Theme toggle
@@ -361,9 +382,12 @@ class MsgViewerApp {
         <head>
           <meta charset="utf-8">
           <style>
-            body { font-family: system-ui, -apple-system, sans-serif; padding: 16px; color: #1e293b; line-height: 1.6; }
+            body { font-family: system-ui, -apple-system, sans-serif; padding: 16px; color: #1e293b; line-height: 1.6; zoom: ${this.fontZoom / 100}; }
             img { max-width: 100%; height: auto; }
             a { color: #2563eb; }
+            @media print {
+              body { zoom: 1 !important; }
+            }
           </style>
         </head>
         <body>${cleanHtml}</body>
@@ -374,10 +398,52 @@ class MsgViewerApp {
       iframeDoc.open();
       iframeDoc.write(fullDoc);
       iframeDoc.close();
+      if (iframeDoc.body) {
+        iframeDoc.body.style.zoom = String(this.fontZoom / 100);
+      }
     } else {
       this.elements.bodyIframe.style.display = 'none';
       this.elements.bodyPlain.style.display = 'block';
       this.elements.bodyPlain.textContent = msg.bodyText || '(This email has no body text)';
+    }
+    this.applyFontZoom();
+  }
+
+  changeFontZoom(delta) {
+    const newZoom = Math.min(250, Math.max(60, this.fontZoom + delta));
+    if (newZoom !== this.fontZoom) {
+      this.fontZoom = newZoom;
+      localStorage.setItem('msg_viewer_font_zoom', String(this.fontZoom));
+      this.applyFontZoom();
+    }
+  }
+
+  resetFontZoom() {
+    if (this.fontZoom !== 100) {
+      this.fontZoom = 100;
+      localStorage.setItem('msg_viewer_font_zoom', '100');
+      this.applyFontZoom();
+    }
+  }
+
+  applyFontZoom() {
+    if (this.elements.fontZoomLevel) {
+      this.elements.fontZoomLevel.textContent = `${this.fontZoom}%`;
+    }
+
+    if (this.elements.bodyPlain) {
+      this.elements.bodyPlain.style.fontSize = `${0.95 * (this.fontZoom / 100)}rem`;
+    }
+
+    if (this.elements.bodyIframe) {
+      try {
+        const iframeDoc = this.elements.bodyIframe.contentDocument || this.elements.bodyIframe.contentWindow.document;
+        if (iframeDoc && iframeDoc.body) {
+          iframeDoc.body.style.zoom = String(this.fontZoom / 100);
+        }
+      } catch (e) {
+        console.warn('Could not apply zoom to iframe body:', e);
+      }
     }
   }
 

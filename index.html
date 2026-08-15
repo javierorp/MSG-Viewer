@@ -360,14 +360,7 @@
                 </div>
               </div>
 
-              <div
-                style="
-                  display: flex;
-                  justify-content: space-between;
-                  align-items: center;
-                  margin-top: 6px;
-                "
-              >
+              <div class="view-controls-bar">
                 <div class="view-tabs">
                   <button
                     id="tabHtml"
@@ -378,6 +371,66 @@
                   </button>
                   <button id="tabText" class="tab-btn" data-i18n="tabText">
                     Plain Text
+                  </button>
+                </div>
+
+                <div
+                  class="zoom-controls"
+                  role="group"
+                  aria-label="Font Size Controls"
+                >
+                  <button
+                    id="btnFontDecrease"
+                    class="zoom-btn zoom-btn-icon"
+                    title="Disminuir tamaño de fuente"
+                    data-i18n-title="zoomOut"
+                    aria-label="Disminuir tamaño de fuente"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2.5"
+                        d="M5 12h14"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    id="btnFontReset"
+                    class="zoom-btn zoom-btn-value"
+                    title="Restablecer tamaño de fuente (100%)"
+                    data-i18n-title="zoomReset"
+                    aria-label="Restablecer tamaño de fuente"
+                  >
+                    <span id="fontZoomLevel">100%</span>
+                  </button>
+                  <button
+                    id="btnFontIncrease"
+                    class="zoom-btn zoom-btn-icon"
+                    title="Aumentar tamaño de fuente"
+                    data-i18n-title="zoomIn"
+                    aria-label="Aumentar tamaño de fuente"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2.5"
+                        d="M12 5v14M5 12h14"
+                      />
+                    </svg>
                   </button>
                 </div>
               </div>

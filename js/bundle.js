@@ -54,11 +54,14 @@
       aboutCreator: "Creador:",
       aboutRepo: "Repositorio GitHub:",
       aboutDesc:
-        "Visor gratuito, offline y seguro de archivos .msg para Windows sin necesidad de permisos de administrador.",
+        "Visor gratuito, offline y seguro de archivos '.msg' para Windows",
       openFolderLocation: "Abrir carpeta",
       openFolderLocationTitle: "Abrir la carpeta que contiene este archivo",
       folderOpened: "Carpeta abierta",
       pathCopied: "Ruta copiada",
+      zoomIn: "Aumentar tamaño de fuente",
+      zoomOut: "Disminuir tamaño de fuente",
+      zoomReset: "Restablecer tamaño de fuente",
     },
     en: {
       appTitle: "MSG Viewer",
@@ -98,12 +101,14 @@
       aboutTitle: "About MSG Viewer",
       aboutCreator: "Creator:",
       aboutRepo: "GitHub Repository:",
-      aboutDesc:
-        "Free, offline and secure .msg email viewer for Windows without administrator permissions.",
+      aboutDesc: "Free, offline and secure '.msg' email viewer for Windows",
       openFolderLocation: "Open Folder",
       openFolderLocationTitle: "Open folder containing this file",
       folderOpened: "Folder opened",
       pathCopied: "Path copied",
+      zoomIn: "Increase font size",
+      zoomOut: "Decrease font size",
+      zoomReset: "Reset font size",
     },
   };
 
@@ -787,10 +792,20 @@
       const defaultLang = "en";
       this.currentLang = localStorage.getItem("msg_viewer_lang") || defaultLang;
 
+      // Font zoom level (60% to 250%, default 100%)
+      this.fontZoom = parseInt(
+        localStorage.getItem("msg_viewer_font_zoom") || "100",
+        10,
+      );
+      if (isNaN(this.fontZoom) || this.fontZoom < 60 || this.fontZoom > 250) {
+        this.fontZoom = 100;
+      }
+
       this.initDOMElements();
       this.initEventListeners();
       this.initTheme();
       this.applyLanguage(this.currentLang);
+      this.applyFontZoom();
       this.checkUrlParams();
     }
 
@@ -870,6 +885,10 @@
 
         tabHtml: document.getElementById("tabHtml"),
         tabText: document.getElementById("tabText"),
+        btnFontDecrease: document.getElementById("btnFontDecrease"),
+        btnFontIncrease: document.getElementById("btnFontIncrease"),
+        btnFontReset: document.getElementById("btnFontReset"),
+        fontZoomLevel: document.getElementById("fontZoomLevel"),
 
         attachmentsSection: document.getElementById("attachmentsSection"),
         attachmentsCount: document.getElementById("attachmentsCount"),
@@ -1045,6 +1064,22 @@
       if (this.elements.tabText) {
         this.elements.tabText.addEventListener("click", () =>
           this.setViewMode("text"),
+        );
+      }
+
+      if (this.elements.btnFontDecrease) {
+        this.elements.btnFontDecrease.addEventListener("click", () =>
+          this.changeFontZoom(-10),
+        );
+      }
+      if (this.elements.btnFontIncrease) {
+        this.elements.btnFontIncrease.addEventListener("click", () =>
+          this.changeFontZoom(10),
+        );
+      }
+      if (this.elements.btnFontReset) {
+        this.elements.btnFontReset.addEventListener("click", () =>
+          this.resetFontZoom(),
         );
       }
 
@@ -1424,7 +1459,7 @@
           <head>
             <meta charset="utf-8">
             <style>
-              body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; color: #000000; line-height: 1.6; background-color: #ffffff; }
+              body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; color: #000000; line-height: 1.6; background-color: #ffffff; zoom: ${this.fontZoom / 100}; }
               p, div, span, td, th, li, a, h1, h2, h3, h4, h5, h6 { color: #000000; }
               img { max-width: 100%; height: auto; }
               a { color: #1d4ed8; text-decoration: underline; }
@@ -1432,6 +1467,7 @@
                 *, body, p, div, span, td, th, li, a, h1, h2, h3, h4, h5, h6 {
                   color: #000000 !important;
                   background: #ffffff !important;
+                  zoom: 1 !important;
                 }
               }
             </style>
@@ -1446,6 +1482,9 @@
         iframeDoc.open();
         iframeDoc.write(fullDoc);
         iframeDoc.close();
+        if (iframeDoc.body) {
+          iframeDoc.body.style.zoom = String(this.fontZoom / 100);
+        }
       } else {
         this.elements.bodyIframe.style.display = "none";
         this.elements.bodyPlain.style.display = "block";
@@ -1458,6 +1497,47 @@
         }
         this.elements.bodyPlain.textContent =
           textToShow || this.t("noBodyText");
+      }
+      this.applyFontZoom();
+    }
+
+    changeFontZoom(delta) {
+      const newZoom = Math.min(250, Math.max(60, this.fontZoom + delta));
+      if (newZoom !== this.fontZoom) {
+        this.fontZoom = newZoom;
+        localStorage.setItem("msg_viewer_font_zoom", String(this.fontZoom));
+        this.applyFontZoom();
+      }
+    }
+
+    resetFontZoom() {
+      if (this.fontZoom !== 100) {
+        this.fontZoom = 100;
+        localStorage.setItem("msg_viewer_font_zoom", "100");
+        this.applyFontZoom();
+      }
+    }
+
+    applyFontZoom() {
+      if (this.elements.fontZoomLevel) {
+        this.elements.fontZoomLevel.textContent = `${this.fontZoom}%`;
+      }
+
+      if (this.elements.bodyPlain) {
+        this.elements.bodyPlain.style.fontSize = `${0.95 * (this.fontZoom / 100)}rem`;
+      }
+
+      if (this.elements.bodyIframe) {
+        try {
+          const iframeDoc =
+            this.elements.bodyIframe.contentDocument ||
+            this.elements.bodyIframe.contentWindow.document;
+          if (iframeDoc && iframeDoc.body) {
+            iframeDoc.body.style.zoom = String(this.fontZoom / 100);
+          }
+        } catch (e) {
+          console.warn("Could not apply zoom to iframe body:", e);
+        }
       }
     }
 
