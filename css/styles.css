@@ -227,6 +227,18 @@ html, body {
   border-color: var(--border-strong);
 }
 
+.btn-danger {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+}
+
+.btn-danger:hover {
+  background: #b91c1c;
+  transform: translateY(-1px);
+}
+
 .btn-icon {
   width: 36px;
   height: 36px;
@@ -340,11 +352,49 @@ body.is-resizing iframe {
 }
 
 .sidebar-header {
-  padding: 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+}
+
+.sidebar-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.sidebar-count-badge {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.01em;
+}
+
+.btn-clear-all {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.btn-clear-all:hover {
+  color: var(--danger);
+  background: rgba(220, 38, 38, 0.08);
 }
 
 .search-box {
@@ -389,7 +439,8 @@ body.is-resizing iframe {
 
 /* 3-Line Sidebar Card Item Layout */
 .file-item {
-  padding: 12px 14px;
+  position: relative;
+  padding: 12px 32px 12px 14px;
   border-radius: var(--radius-sm);
   background: transparent;
   border: 1px solid transparent;
@@ -409,6 +460,37 @@ body.is-resizing iframe {
   border-color: var(--accent-primary);
 }
 
+.btn-remove-item {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+  z-index: 2;
+}
+
+.file-item:hover .btn-remove-item,
+.file-item:focus-within .btn-remove-item,
+.file-item.active .btn-remove-item {
+  opacity: 0.7;
+}
+
+.btn-remove-item:hover {
+  opacity: 1 !important;
+  background: rgba(220, 38, 38, 0.15);
+  color: var(--danger);
+}
+
 /* Line 1: Subject */
 .file-item-subject {
   font-weight: 700;
@@ -417,6 +499,7 @@ body.is-resizing iframe {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-right: 4px;
 }
 
 /* Line 2: Sender */

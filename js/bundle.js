@@ -64,6 +64,14 @@
       zoomOut: "Disminuir tamaño de fuente",
       zoomReset: "Restablecer tamaño de fuente",
       resizeSidebar: "Arrastrar para cambiar el tamaño del panel (doble clic para restablecer)",
+      clearAll: "Limpiar lista",
+      clearAllTitle: "Eliminar todos los correos guardados de la lista",
+      clearAllConfirm: "¿Deseas eliminar todos los correos guardados de la lista?",
+      removeMsg: "Eliminar correo de la lista",
+      emailCountSingular: "correo",
+      emailsCountPlural: "correos",
+      modalConfirm: "Aceptar",
+      modalCancel: "Cancelar",
     },
     en: {
       appTitle: "MSG Viewer",
@@ -113,6 +121,14 @@
       zoomOut: "Decrease font size",
       zoomReset: "Reset font size",
       resizeSidebar: "Drag to resize sidebar (double-click to reset)",
+      clearAll: "Clear list",
+      clearAllTitle: "Remove all saved emails from list",
+      clearAllConfirm: "Do you want to remove all saved emails from the list?",
+      removeMsg: "Remove email from list",
+      emailCountSingular: "email",
+      emailsCountPlural: "emails",
+      modalConfirm: "OK",
+      modalCancel: "Cancel",
     },
   };
 
@@ -784,6 +800,126 @@
     }
   }
 
+  // 5. IndexedDB Storage Manager for Persistent Opened Messages
+  class MsgStorage {
+    constructor(dbName = "MsgViewerDB", storeName = "messages") {
+      this.dbName = dbName;
+      this.storeName = storeName;
+      this.db = null;
+      this.isSupported = typeof indexedDB !== "undefined";
+    }
+
+    async init() {
+      if (!this.isSupported) return false;
+      return new Promise((resolve) => {
+        try {
+          const request = indexedDB.open(this.dbName, 1);
+          request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(this.storeName)) {
+              db.createObjectStore(this.storeName, { keyPath: "id" });
+            }
+          };
+          request.onsuccess = (e) => {
+            this.db = e.target.result;
+            resolve(true);
+          };
+          request.onerror = (err) => {
+            console.warn("IndexedDB open error:", err);
+            resolve(false);
+          };
+        } catch (e) {
+          console.warn("IndexedDB initialization exception:", e);
+          resolve(false);
+        }
+      });
+    }
+
+    async getAll() {
+      if (!this.db) return [];
+      return new Promise((resolve) => {
+        try {
+          const tx = this.db.transaction(this.storeName, "readonly");
+          const store = tx.objectStore(this.storeName);
+          const request = store.getAll();
+          request.onsuccess = () => {
+            const list = request.result || [];
+            list.sort((a, b) => (a.savedAt || 0) - (b.savedAt || 0));
+            resolve(list);
+          };
+          request.onerror = () => resolve([]);
+        } catch (e) {
+          console.warn("IndexedDB getAll failed:", e);
+          resolve([]);
+        }
+      });
+    }
+
+    async saveMessage(msg) {
+      if (!this.db || !msg) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = this.db.transaction(this.storeName, "readwrite");
+          const store = tx.objectStore(this.storeName);
+          store.put(msg);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          console.warn("IndexedDB saveMessage failed:", e);
+          resolve(false);
+        }
+      });
+    }
+
+    async saveMessages(msgs) {
+      if (!this.db || !msgs || msgs.length === 0) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = this.db.transaction(this.storeName, "readwrite");
+          const store = tx.objectStore(this.storeName);
+          msgs.forEach((m) => store.put(m));
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          console.warn("IndexedDB saveMessages failed:", e);
+          resolve(false);
+        }
+      });
+    }
+
+    async deleteMessage(id) {
+      if (!this.db || !id) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = this.db.transaction(this.storeName, "readwrite");
+          const store = tx.objectStore(this.storeName);
+          store.delete(id);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          console.warn("IndexedDB deleteMessage failed:", e);
+          resolve(false);
+        }
+      });
+    }
+
+    async clearAll() {
+      if (!this.db) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = this.db.transaction(this.storeName, "readwrite");
+          const store = tx.objectStore(this.storeName);
+          store.clear();
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => resolve(false);
+        } catch (e) {
+          console.warn("IndexedDB clearAll failed:", e);
+          resolve(false);
+        }
+      });
+    }
+  }
+
   // 6. Main Application Controller Class
   class MsgViewerApp {
     constructor() {
@@ -805,12 +941,37 @@
         this.fontZoom = 100;
       }
 
+      this.storage = new MsgStorage();
+
       this.initDOMElements();
       this.initEventListeners();
       this.initSidebarResizer();
       this.initTheme();
       this.applyLanguage(this.currentLang);
       this.applyFontZoom();
+
+      this.initData();
+    }
+
+    async initData() {
+      try {
+        await this.storage.init();
+        const savedMessages = await this.storage.getAll();
+        if (savedMessages && savedMessages.length > 0) {
+          this.messages = savedMessages;
+          this.renderSidebarList();
+          const savedActiveId = localStorage.getItem("msg_viewer_active_id");
+          let activeIndex = -1;
+          if (savedActiveId) {
+            activeIndex = this.messages.findIndex((m) => m.id === savedActiveId);
+          }
+          if (activeIndex < 0) activeIndex = this.messages.length - 1;
+          this.selectMessage(activeIndex);
+        }
+      } catch (err) {
+        console.warn("Could not load saved messages from storage:", err);
+      }
+
       this.checkUrlParams();
     }
 
@@ -860,6 +1021,8 @@
         }
       });
 
+      this.updateMessagesCountBadge();
+
       // Re-render message detail & list if currently viewing an email
       if (this.currentMsgIndex >= 0) {
         this.selectMessage(this.currentMsgIndex);
@@ -877,6 +1040,9 @@
         dragOverlay: document.getElementById("dragOverlay"),
         sidebar: document.getElementById("sidebar"),
         sidebarResizer: document.getElementById("sidebarResizer"),
+        sidebarMetaRow: document.getElementById("sidebarMetaRow"),
+        messagesCountBadge: document.getElementById("messagesCountBadge"),
+        btnClearAll: document.getElementById("btnClearAll"),
         fileList: document.getElementById("fileList"),
         searchInput: document.getElementById("searchInput"),
         emptyState: document.getElementById("emptyState"),
@@ -921,6 +1087,13 @@
 
         aboutModal: document.getElementById("aboutModal"),
         aboutModalBtnClose: document.getElementById("aboutModalBtnClose"),
+
+        confirmModal: document.getElementById("confirmModal"),
+        confirmModalTitle: document.getElementById("confirmModalTitle"),
+        confirmModalMessage: document.getElementById("confirmModalMessage"),
+        confirmModalBtnConfirm: document.getElementById("confirmModalBtnConfirm"),
+        confirmModalBtnCancel: document.getElementById("confirmModalBtnCancel"),
+        confirmModalBtnClose: document.getElementById("confirmModalBtnClose"),
       };
     }
 
@@ -934,20 +1107,7 @@
           if (response.ok) {
             const data = await response.json();
             if (!data.cancelled && data.messages && data.messages.length > 0) {
-              data.messages.forEach((msg) => {
-                if (msg.attachments) {
-                  msg.attachments = msg.attachments.map((att) => ({
-                    fileName: att.fileName,
-                    mimeType: att.mimeType,
-                    size: att.size,
-                    extension: att.extension,
-                    content: base64ToUint8Array(att.base64Content),
-                  }));
-                }
-                this.messages.push(msg);
-              });
-              this.renderSidebarList();
-              this.selectMessage(this.messages.length - data.messages.length);
+              await this.addMessages(data.messages);
               return;
             } else if (data.cancelled) {
               return;
@@ -973,20 +1133,7 @@
           if (response.ok) {
             const data = await response.json();
             if (!data.cancelled && data.messages && data.messages.length > 0) {
-              data.messages.forEach((msg) => {
-                if (msg.attachments) {
-                  msg.attachments = msg.attachments.map((att) => ({
-                    fileName: att.fileName,
-                    mimeType: att.mimeType,
-                    size: att.size,
-                    extension: att.extension,
-                    content: base64ToUint8Array(att.base64Content),
-                  }));
-                }
-                this.messages.push(msg);
-              });
-              this.renderSidebarList();
-              this.selectMessage(this.messages.length - data.messages.length);
+              await this.addMessages(data.messages);
               return;
             } else if (data.cancelled) {
               return;
@@ -1037,6 +1184,12 @@
       }
       if (this.elements.dropZoneCard) {
         this.elements.dropZoneCard.addEventListener("click", openFilePicker);
+      }
+
+      if (this.elements.btnClearAll) {
+        this.elements.btnClearAll.addEventListener("click", () =>
+          this.clearAllMessages(),
+        );
       }
 
       window.addEventListener("dragover", (e) => {
@@ -1204,7 +1357,7 @@
         await getFilesRecursively(dirHandle);
 
         if (msgFiles.length === 0) {
-          alert(this.t("selectMsgAlert"));
+          await this.showAlertModal({ message: this.t("selectMsgAlert") });
           return;
         }
 
@@ -1438,15 +1591,234 @@
       return null;
     }
 
+    findExistingMessageIndex(msg) {
+      if (!msg) return -1;
+      return this.messages.findIndex((m) => {
+        if (msg.id && m.id && msg.id === m.id) return true;
+        if (msg.filePath && m.filePath && msg.filePath === m.filePath) return true;
+        const sameName = (m.fileName || "").toLowerCase() === (msg.fileName || "").toLowerCase();
+        const sameSize = m.fileSize && msg.fileSize ? m.fileSize === msg.fileSize : true;
+        const sameSubject = (m.subject || "") === (msg.subject || "");
+        const sameDate = (m.date || "") === (msg.date || "");
+        return sameName && sameSize && sameSubject && sameDate;
+      });
+    }
+
+    async addMessages(newMsgs, targetSelectIndex = -1) {
+      if (!newMsgs || newMsgs.length === 0) return;
+
+      let firstIndex = -1;
+      const toSave = [];
+
+      for (let i = 0; i < newMsgs.length; i++) {
+        const rawMsg = newMsgs[i];
+        if (rawMsg.attachments) {
+          rawMsg.attachments = rawMsg.attachments.map((att) => {
+            if (att.base64Content && !att.content) {
+              return {
+                fileName: att.fileName,
+                mimeType: att.mimeType,
+                size: att.size,
+                extension: att.extension,
+                content: base64ToUint8Array(att.base64Content),
+              };
+            }
+            return att;
+          });
+        }
+
+        const existingIdx = this.findExistingMessageIndex(rawMsg);
+        if (existingIdx >= 0) {
+          rawMsg.id = this.messages[existingIdx].id;
+          rawMsg.savedAt = Date.now();
+          this.messages[existingIdx] = rawMsg;
+          toSave.push(rawMsg);
+          if (firstIndex === -1) firstIndex = existingIdx;
+        } else {
+          rawMsg.id =
+            rawMsg.id ||
+            "msg_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
+          rawMsg.savedAt = Date.now();
+          this.messages.push(rawMsg);
+          toSave.push(rawMsg);
+          if (firstIndex === -1) firstIndex = this.messages.length - 1;
+        }
+      }
+
+      await this.storage.saveMessages(toSave);
+      this.renderSidebarList();
+
+      const selectIdx = targetSelectIndex >= 0 ? targetSelectIndex : firstIndex;
+      if (selectIdx >= 0 && selectIdx < this.messages.length) {
+        this.selectMessage(selectIdx);
+      }
+    }
+
+    async removeMessage(index) {
+      if (index < 0 || index >= this.messages.length) return;
+      const [removed] = this.messages.splice(index, 1);
+      if (removed && removed.id) {
+        await this.storage.deleteMessage(removed.id);
+      }
+
+      if (this.messages.length === 0) {
+        this.currentMsgIndex = -1;
+        localStorage.removeItem("msg_viewer_active_id");
+        this.elements.emptyState.style.display = "flex";
+        this.elements.emailDetails.style.display = "none";
+      } else {
+        const nextIndex = Math.min(index, this.messages.length - 1);
+        this.selectMessage(nextIndex);
+      }
+      this.renderSidebarList();
+    }
+
+    showConfirmModal({
+      title = "MSG Viewer",
+      message = "",
+      confirmText = this.t("modalConfirm"),
+      cancelText = this.t("modalCancel"),
+      isDanger = false,
+    } = {}) {
+      return new Promise((resolve) => {
+        if (!this.elements.confirmModal) {
+          resolve(confirm(message));
+          return;
+        }
+
+        this.elements.confirmModalTitle.textContent = title;
+        this.elements.confirmModalMessage.textContent = message;
+        this.elements.confirmModalBtnConfirm.textContent = confirmText;
+        this.elements.confirmModalBtnCancel.textContent = cancelText;
+        this.elements.confirmModalBtnCancel.style.display = "inline-flex";
+
+        if (isDanger) {
+          this.elements.confirmModalBtnConfirm.className = "btn btn-danger";
+        } else {
+          this.elements.confirmModalBtnConfirm.className = "btn btn-primary";
+        }
+
+        const cleanup = (result) => {
+          this.elements.confirmModal.classList.remove("active");
+          this.elements.confirmModalBtnConfirm.removeEventListener("click", onConfirm);
+          this.elements.confirmModalBtnCancel.removeEventListener("click", onCancel);
+          this.elements.confirmModalBtnClose.removeEventListener("click", onCancel);
+          this.elements.confirmModal.removeEventListener("click", onOverlay);
+          window.removeEventListener("keydown", onKey);
+          resolve(result);
+        };
+
+        const onConfirm = () => cleanup(true);
+        const onCancel = () => cleanup(false);
+        const onOverlay = (e) => {
+          if (e.target === this.elements.confirmModal) cleanup(false);
+        };
+        const onKey = (e) => {
+          if (e.key === "Escape") cleanup(false);
+          else if (e.key === "Enter") cleanup(true);
+        };
+
+        this.elements.confirmModalBtnConfirm.addEventListener("click", onConfirm);
+        this.elements.confirmModalBtnCancel.addEventListener("click", onCancel);
+        this.elements.confirmModalBtnClose.addEventListener("click", onCancel);
+        this.elements.confirmModal.addEventListener("click", onOverlay);
+        window.addEventListener("keydown", onKey);
+
+        this.elements.confirmModal.classList.add("active");
+        this.elements.confirmModalBtnConfirm.focus();
+      });
+    }
+
+    showAlertModal({
+      title = "MSG Viewer",
+      message = "",
+      okText = this.t("modalConfirm"),
+    } = {}) {
+      return new Promise((resolve) => {
+        if (!this.elements.confirmModal) {
+          alert(message);
+          resolve();
+          return;
+        }
+
+        this.elements.confirmModalTitle.textContent = title;
+        this.elements.confirmModalMessage.textContent = message;
+        this.elements.confirmModalBtnConfirm.textContent = okText;
+        this.elements.confirmModalBtnConfirm.className = "btn btn-primary";
+        this.elements.confirmModalBtnCancel.style.display = "none";
+
+        const cleanup = () => {
+          this.elements.confirmModal.classList.remove("active");
+          this.elements.confirmModalBtnConfirm.removeEventListener("click", onOk);
+          this.elements.confirmModalBtnClose.removeEventListener("click", onOk);
+          this.elements.confirmModal.removeEventListener("click", onOverlay);
+          window.removeEventListener("keydown", onKey);
+          resolve();
+        };
+
+        const onOk = () => cleanup();
+        const onOverlay = (e) => {
+          if (e.target === this.elements.confirmModal) cleanup();
+        };
+        const onKey = (e) => {
+          if (e.key === "Escape" || e.key === "Enter") cleanup();
+        };
+
+        this.elements.confirmModalBtnConfirm.addEventListener("click", onOk);
+        this.elements.confirmModalBtnClose.addEventListener("click", onOk);
+        this.elements.confirmModal.addEventListener("click", onOverlay);
+        window.addEventListener("keydown", onKey);
+
+        this.elements.confirmModal.classList.add("active");
+        this.elements.confirmModalBtnConfirm.focus();
+      });
+    }
+
+    async clearAllMessages() {
+      if (this.messages.length === 0) return;
+      const confirmed = await this.showConfirmModal({
+        title: "MSG Viewer",
+        message: this.t("clearAllConfirm"),
+        confirmText: this.t("modalConfirm"),
+        cancelText: this.t("modalCancel"),
+        isDanger: true,
+      });
+
+      if (confirmed) {
+        this.messages = [];
+        this.currentMsgIndex = -1;
+        localStorage.removeItem("msg_viewer_active_id");
+        await this.storage.clearAll();
+        this.renderSidebarList();
+        this.elements.emptyState.style.display = "flex";
+        this.elements.emailDetails.style.display = "none";
+      }
+    }
+
+    updateMessagesCountBadge() {
+      const count = this.messages.length;
+      if (this.elements.sidebarMetaRow) {
+        this.elements.sidebarMetaRow.style.display = count > 0 ? "flex" : "none";
+      }
+      if (this.elements.messagesCountBadge) {
+        const label =
+          count === 1
+            ? this.t("emailCountSingular")
+            : this.t("emailsCountPlural");
+        this.elements.messagesCountBadge.textContent = `${count} ${label}`;
+      }
+    }
+
     async handleFilesSelected(files) {
       const msgFiles = Array.from(files).filter((f) =>
         f.name.toLowerCase().endsWith(".msg"),
       );
       if (msgFiles.length === 0) {
-        alert(this.t("selectMsgAlert"));
+        await this.showAlertModal({ message: this.t("selectMsgAlert") });
         return;
       }
 
+      const loadedMessages = [];
       for (const file of msgFiles) {
         try {
           const arrayBuffer = await file.arrayBuffer();
@@ -1465,16 +1837,17 @@
             file.webkitRelativePath ||
             file.name;
 
-          this.messages.push(parsedData);
+          loadedMessages.push(parsedData);
         } catch (err) {
           console.error("Error parsing .msg file:", err);
-          alert(`${this.t("readErrorAlert")} ${file.name}: ${err.message}`);
+          await this.showAlertModal({
+            message: `${this.t("readErrorAlert")} ${file.name}: ${err.message}`,
+          });
         }
       }
 
-      if (this.messages.length > 0) {
-        this.renderSidebarList();
-        this.selectMessage(this.messages.length - msgFiles.length);
+      if (loadedMessages.length > 0) {
+        await this.addMessages(loadedMessages);
       }
     }
 
@@ -1496,6 +1869,9 @@
         const dateStr = formatDateString(msg.date) || this.t("noDate");
 
         item.innerHTML = `
+          <button class="btn-remove-item" title="${escapeHtml(this.t("removeMsg"))}" aria-label="${escapeHtml(this.t("removeMsg"))}">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
           <div class="file-item-subject" title="${escapeHtml(msg.subject || this.t("noSubject"))}">${escapeHtml(msg.subject || this.t("noSubject"))}</div>
           <div class="file-item-sender" title="${escapeHtml(senderStr)}">${escapeHtml(senderStr)}</div>
           <div class="file-item-date-row">
@@ -1504,9 +1880,19 @@
           </div>
         `;
 
+        const removeBtn = item.querySelector(".btn-remove-item");
+        if (removeBtn) {
+          removeBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.removeMessage(idx);
+          });
+        }
+
         item.addEventListener("click", () => this.selectMessage(idx));
         this.elements.fileList.appendChild(item);
       });
+
+      this.updateMessagesCountBadge();
     }
 
     filterFileList(query) {
@@ -1530,6 +1916,9 @@
 
       this.currentMsgIndex = index;
       const msg = this.messages[index];
+      if (msg && msg.id) {
+        localStorage.setItem("msg_viewer_active_id", msg.id);
+      }
 
       Array.from(this.elements.fileList.children).forEach((el, i) => {
         el.classList.toggle("active", i === index);
@@ -1864,9 +2253,7 @@
           data.filePath = data.filePath || filePath;
           data.fileName =
             data.fileName || filePath.split(/[\\/]/).pop() || "message.msg";
-          this.messages.push(data);
-          this.renderSidebarList();
-          this.selectMessage(this.messages.length - 1);
+          await this.addMessages([data]);
         }
       } catch (err) {
         console.error("Error loading file from path:", err);
