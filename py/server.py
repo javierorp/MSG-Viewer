@@ -5,6 +5,8 @@ Serves web app frontend and processes .msg files using Python extract-msg
 """
 
 import base64
+import ctypes
+from ctypes import wintypes
 import datetime
 import email.utils
 import http.server
@@ -26,6 +28,22 @@ except ImportError:
     HAS_TKINTER = False
 
 import extract_msg
+
+if sys.platform == 'win32':
+    class SHFILEOPSTRUCTW(ctypes.Structure):  # pylint: disable=too-few-public-methods,too-many-instance-attributes,invalid-name
+        """Structure for Windows SHFileOperationW API."""
+        _fields_ = [
+            ("hwnd", wintypes.HWND),
+            ("wFunc", wintypes.UINT),
+            ("pFrom", wintypes.LPCWSTR),
+            ("pTo", wintypes.LPCWSTR),
+            ("fFlags", wintypes.WORD),
+            ("fAnyOperationsAborted", wintypes.BOOL),
+            ("hNameMappings", wintypes.LPVOID),
+            ("lpszProgressTitle", wintypes.LPCWSTR),
+        ]
+else:
+    SHFILEOPSTRUCTW = None  # type: ignore
 
 # Safe stdout/stderr redirection for pythonw (GUI mode without console)
 if sys.stdout is None:
@@ -131,6 +149,63 @@ def open_in_explorer(target_path):
             subprocess.Popen(['explorer.exe', parent_abs])
         return True
     return False
+
+
+def _send_to_recycle_bin(file_path):
+    """Send a file to the Windows Recycle Bin using native shell API."""
+    if sys.platform != 'win32' or SHFILEOPSTRUCTW is None:
+        return False
+    try:
+        fo_delete = 3
+        fof_allowundo = 0x40
+        fof_noconfirmation = 0x10
+        fof_silent = 0x04
+        fof_noerrorui = 0x0400
+
+        p_from = file_path + '\0\0'
+        flags = fof_allowundo | fof_noconfirmation | fof_silent | fof_noerrorui
+        op = SHFILEOPSTRUCTW(
+            hwnd=None,
+            wFunc=fo_delete,
+            pFrom=p_from,
+            pTo=None,
+            fFlags=flags,
+            fAnyOperationsAborted=False,
+            hNameMappings=None,
+            lpszProgressTitle=None
+        )
+
+        res = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(op))
+        return res == 0 and not op.fAnyOperationsAborted
+    except Exception:  # pylint: disable=broad-exception-caught
+        return False
+
+
+def delete_file_on_disk(target_path, file_size=None):
+    """Send a file to the Windows Recycle Bin or delete it physically."""
+    if not target_path:
+        return False, "No file path provided"
+    target_path = os.path.normpath(target_path.strip(' "\''))
+    resolved_path = None
+    if os.path.isfile(target_path):
+        resolved_path = os.path.abspath(target_path)
+    else:
+        found = find_file_on_disk(target_path, file_size)
+        if found and os.path.isfile(found):
+            resolved_path = os.path.abspath(found)
+
+    if not resolved_path:
+        return False, f"File not found on disk: {target_path}"
+
+    try:
+        if _send_to_recycle_bin(resolved_path):
+            return True, resolved_path
+        os.remove(resolved_path)
+        return True, resolved_path
+    except PermissionError:
+        return False, f"Permission denied while deleting: {resolved_path}"
+    except OSError as e:
+        return False, f"Error deleting file: {str(e)}"
 
 
 def pick_files_native():
@@ -381,7 +456,13 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
                         return
 
                 msg = extract_msg.Message(target_path)
-                response_data = extract_msg_data(msg, file_path=target_path)
+                try:
+                    response_data = extract_msg_data(
+                        msg, file_path=target_path
+                    )
+                finally:
+                    if hasattr(msg, 'close'):
+                        msg.close()
                 self.send_json(response_data)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.send_json({"error": str(e)}, status=500)
@@ -400,24 +481,35 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):  # pylint: disable=invalid-name
         """Handle POST requests for file uploads and native dialogs."""
         parsed_url = urlparse(self.path)
-        if parsed_url.path == '/api/pick-files':
-            self.handle_pick_files()
-        elif parsed_url.path == '/api/pick-folder':
-            self.handle_pick_folder()
-        elif parsed_url.path == '/api/parse':
+        handlers = {
+            '/api/pick-files': self.handle_pick_files,
+            '/api/pick-folder': self.handle_pick_folder,
+            '/api/parse': self.handle_parse,
+            '/api/open-folder': self.handle_open_folder,
+            '/api/delete-file': self.handle_delete_file
+        }
+        handler = handlers.get(parsed_url.path)
+        if handler:
+            handler()
+        else:
+            self.send_error(404)
+
+    def handle_parse(self):
+        """Handle parse request for uploaded .msg file stream."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+
+            file_name = self.headers.get('X-File-Name', '')
+            file_size_hdr = self.headers.get('X-File-Size', '')
+            file_size = (
+                int(file_size_hdr)
+                if file_size_hdr.isdigit()
+                else len(post_data)
+            )
+
+            msg = extract_msg.Message(post_data)
             try:
-                content_length = int(self.headers.get('Content-Length', 0))
-                post_data = self.rfile.read(content_length)
-
-                file_name = self.headers.get('X-File-Name', '')
-                file_size_hdr = self.headers.get('X-File-Size', '')
-                file_size = (
-                    int(file_size_hdr)
-                    if file_size_hdr.isdigit()
-                    else len(post_data)
-                )
-
-                msg = extract_msg.Message(post_data)
                 found_path = (
                     find_file_on_disk(file_name, file_size)
                     if file_name else None
@@ -426,30 +518,56 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
                 if not found_path and file_name:
                     response_data["fileName"] = file_name
                     response_data["filePath"] = file_name
+            finally:
+                if hasattr(msg, 'close'):
+                    msg.close()
 
-                self.send_json(response_data)
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                self.send_json({"error": str(e)}, status=500)
-        elif parsed_url.path == '/api/open-folder':
-            try:
-                content_length = int(self.headers.get('Content-Length', 0))
-                post_data = self.rfile.read(content_length).decode('utf-8')
-                data = json.loads(post_data)
-                target_path = data.get('path', '').strip(' "\'')
+            self.send_json(response_data)
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.send_json({"error": str(e)}, status=500)
 
-                success = open_in_explorer(target_path)
-                if success:
-                    self.send_json({"success": True, "opened": target_path})
-                else:
-                    err_msg = f"Path '{target_path}' not found"
-                    self.send_json(
-                        {"success": False, "error": err_msg},
-                        status=404
-                    )
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                self.send_json({"error": str(e)}, status=500)
-        else:
-            self.send_error(404)
+    def handle_open_folder(self):
+        """Handle request to open file location in Windows Explorer."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(post_data)
+            target_path = data.get('path', '').strip(' "\'')
+
+            success = open_in_explorer(target_path)
+            if success:
+                self.send_json({"success": True, "opened": target_path})
+            else:
+                err_msg = f"Path '{target_path}' not found"
+                self.send_json(
+                    {"success": False, "error": err_msg},
+                    status=404
+                )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.send_json({"error": str(e)}, status=500)
+
+    def handle_delete_file(self):
+        """Handle physical file deletion from disk."""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(post_data)
+            target_path = data.get('path', '').strip(' "\'')
+            file_size = data.get('fileSize')
+            if not target_path and data.get('fileName'):
+                target_path = data.get('fileName').strip(' "\'')
+
+            success, result = delete_file_on_disk(target_path, file_size)
+            if success:
+                self.send_json({"success": True, "deleted": result})
+            else:
+                status_code = 404 if "not found" in result.lower() else 400
+                self.send_json(
+                    {"success": False, "error": result},
+                    status=status_code
+                )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            self.send_json({"error": str(e)}, status=500)
 
     def handle_pick_files(self):
         """Handle native file picker request and return parsed messages."""
@@ -462,7 +580,11 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
             for fp in file_paths:
                 try:
                     msg = extract_msg.Message(fp)
-                    messages.append(extract_msg_data(msg, file_path=fp))
+                    try:
+                        messages.append(extract_msg_data(msg, file_path=fp))
+                    finally:
+                        if hasattr(msg, 'close'):
+                            msg.close()
                 # pylint: disable=broad-exception-caught
                 except Exception as ex:
                     print(f"Error parsing {fp}:", ex)
@@ -487,7 +609,11 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
             for fp in file_paths:
                 try:
                     msg = extract_msg.Message(fp)
-                    messages.append(extract_msg_data(msg, file_path=fp))
+                    try:
+                        messages.append(extract_msg_data(msg, file_path=fp))
+                    finally:
+                        if hasattr(msg, 'close'):
+                            msg.close()
                 # pylint: disable=broad-exception-caught
                 except Exception as ex:
                     print(f"Error parsing {fp}:", ex)

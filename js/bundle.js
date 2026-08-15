@@ -74,6 +74,11 @@
       clearAllConfirm:
         "¿Deseas eliminar todos los correos guardados de la lista?",
       removeMsg: "Eliminar correo de la lista",
+      deleteMsgFile: "Eliminar",
+      deleteMsgFileTitle: "Enviar este archivo .msg a la papelera de reciclaje",
+      deleteMsgConfirm:
+        "¿Estás seguro de que deseas enviar este archivo a la papelera de reciclaje?\n\n«{file}»",
+      deleteMsgError: "No se pudo mover el archivo a la papelera: ",
       reloadApp: "Recargar interfaz",
       emailCountSingular: "correo",
       emailsCountPlural: "correos",
@@ -136,6 +141,11 @@
       clearAllTitle: "Remove all saved emails from list",
       clearAllConfirm: "Do you want to remove all saved emails from the list?",
       removeMsg: "Remove email from list",
+      deleteMsgFile: "Delete",
+      deleteMsgFileTitle: "Move this .msg file to Recycle Bin",
+      deleteMsgConfirm:
+        "Are you sure you want to move this file to the Recycle Bin?\n\n«{file}»",
+      deleteMsgError: "Could not move file to Recycle Bin: ",
       reloadApp: "Reload interface",
       emailCountSingular: "email",
       emailsCountPlural: "emails",
@@ -1202,6 +1212,7 @@
         btnOpen: document.getElementById("btnOpen"),
         btnOpenFolder: document.getElementById("btnOpenFolder"),
         btnPrint: document.getElementById("btnPrint"),
+        btnDeleteMsg: document.getElementById("btnDeleteMsg"),
         btnReload: document.getElementById("btnReload"),
         btnThemeToggle: document.getElementById("btnThemeToggle"),
         btnAbout: document.getElementById("btnAbout"),
@@ -1454,6 +1465,12 @@
           }
           window.print();
         });
+      }
+
+      if (this.elements.btnDeleteMsg) {
+        this.elements.btnDeleteMsg.addEventListener("click", () =>
+          this.deleteCurrentMsgFile(),
+        );
       }
 
       if (this.elements.btnDownloadAll) {
@@ -1859,6 +1876,74 @@
         this.selectMessage(nextIndex);
       }
       this.renderSidebarList();
+    }
+
+    async deleteCurrentMsgFile() {
+      if (
+        this.currentMsgIndex < 0 ||
+        this.currentMsgIndex >= this.messages.length
+      )
+        return;
+      const msg = this.messages[this.currentMsgIndex];
+      if (!msg) return;
+
+      const path = msg.filePath || msg.fileName || "";
+      const displayPath =
+        msg.filePath || msg.fileName || msg.subject || "email.msg";
+
+      const confirmPrompt = this.t("deleteMsgConfirm").replace(
+        "{file}",
+        displayPath,
+      );
+
+      const confirmed = await this.showConfirmModal({
+        title: this.t("deleteMsgFileTitle"),
+        message: confirmPrompt,
+        confirmText: this.t("modalConfirm"),
+        cancelText: this.t("modalCancel"),
+        isDanger: true,
+      });
+
+      if (!confirmed) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/api/delete-file`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            path: path,
+            fileName: msg.fileName || "",
+            fileSize: msg.fileSize || null,
+          }),
+        });
+
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.success) {
+            await this.removeMessage(this.currentMsgIndex);
+            return;
+          }
+        } else {
+          let errMsg = "";
+          try {
+            const errData = await response.json();
+            errMsg = errData.error || response.statusText;
+          } catch (_) {
+            errMsg = response.statusText;
+          }
+          await this.showAlertModal({
+            title: this.t("deleteMsgFileTitle"),
+            message: `${this.t("deleteMsgError")}${errMsg}`,
+          });
+          return;
+        }
+      } catch (err) {
+        console.warn("Backend server not available for deleting file:", err);
+        await this.showAlertModal({
+          title: this.t("deleteMsgFileTitle"),
+          message: `${this.t("deleteMsgError")}${err.message || err}`,
+        });
+      }
     }
 
     showConfirmModal({

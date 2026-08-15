@@ -1037,6 +1037,41 @@ body.is-resizing iframe {
   transform: scale(0.97);
 }
 
+/* Delete Button in Controls Bar */
+.btn-delete-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  height: 32px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: var(--radius-sm);
+  color: var(--danger);
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.btn-delete-msg svg {
+  flex-shrink: 0;
+}
+
+.btn-delete-msg:hover {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.btn-delete-msg:active {
+  transform: scale(0.97);
+}
+
 /* Drag overlay */
 .drag-overlay {
   position: absolute;
@@ -1302,7 +1337,7 @@ body.is-resizing iframe {
     background: transparent !important;
   }
 
-  .top-bar, .sidebar, .sidebar-resizer, .view-controls-bar, .view-tabs, .zoom-controls, .btn-print, .attachments-section, .btn, .search-box {
+  .top-bar, .sidebar, .sidebar-resizer, .view-controls-bar, .view-tabs, .zoom-controls, .btn-print, .btn-delete-msg, .attachments-section, .btn, .search-box {
     display: none !important;
   }
 

@@ -1,15 +1,17 @@
-import { MsgParser } from './msgParser.js';
-import { sanitizeHtml, escapeHtml } from './sanitizer.js';
+import { MsgParser } from "./msgParser.js";
+import { sanitizeHtml, escapeHtml } from "./sanitizer.js";
 
-const API_BASE = window.location.protocol.startsWith('http') ? '' : 'http://127.0.0.1:8080';
+const API_BASE = window.location.protocol.startsWith("http")
+  ? ""
+  : "http://127.0.0.1:8080";
 
 // Helper function to format sender display cleanly without duplicates
-function formatSenderDisplay(name, email, fallback = 'Unknown') {
-  let n = (name || '').trim();
-  let e = (email || '').trim();
+function formatSenderDisplay(name, email, fallback = "Unknown") {
+  let n = (name || "").trim();
+  let e = (email || "").trim();
 
   // Strip surrounding angle brackets from email if present
-  if (e.startsWith('<') && e.endsWith('>')) {
+  if (e.startsWith("<") && e.endsWith(">")) {
     e = e.slice(1, -1).trim();
   }
 
@@ -17,7 +19,10 @@ function formatSenderDisplay(name, email, fallback = 'Unknown') {
   const emailInE = e.match(/<([^>]+@[^>]+)>/);
   if (emailInE) {
     if (!n) {
-      n = e.replace(/<[^>]+>/, '').replace(/^"|"$/g, '').trim();
+      n = e
+        .replace(/<[^>]+>/, "")
+        .replace(/^"|"$/g, "")
+        .trim();
     }
     e = emailInE[1].trim();
   }
@@ -26,8 +31,15 @@ function formatSenderDisplay(name, email, fallback = 'Unknown') {
   const emailInN = n.match(/<([^>]+@[^>]+)>/);
   if (emailInN) {
     const extractedEmail = emailInN[1].trim();
-    const extractedName = n.replace(/<[^>]+>/, '').replace(/^"|"$/g, '').trim();
-    if (!e || e.toLowerCase() === n.toLowerCase() || e.toLowerCase() === extractedEmail.toLowerCase()) {
+    const extractedName = n
+      .replace(/<[^>]+>/, "")
+      .replace(/^"|"$/g, "")
+      .trim();
+    if (
+      !e ||
+      e.toLowerCase() === n.toLowerCase() ||
+      e.toLowerCase() === extractedEmail.toLowerCase()
+    ) {
       e = extractedEmail;
       n = extractedName;
     } else if (n.toLowerCase().includes(e.toLowerCase())) {
@@ -36,20 +48,20 @@ function formatSenderDisplay(name, email, fallback = 'Unknown') {
   }
 
   // If email is not a valid email address (no @) and name is missing, use email as name
-  if (e && !e.includes('@')) {
+  if (e && !e.includes("@")) {
     if (!n) n = e;
-    e = '';
+    e = "";
   }
 
   // If name is an email address and email is empty
-  if (!e && n.includes('@') && !n.includes(' ')) {
+  if (!e && n.includes("@") && !n.includes(" ")) {
     e = n;
-    n = '';
+    n = "";
   }
 
   // If name and email are identical (case-insensitive)
   if (n && e && n.toLowerCase() === e.toLowerCase()) {
-    n = '';
+    n = "";
   }
 
   // Both name and email present
@@ -69,16 +81,22 @@ class MsgViewerApp {
   constructor() {
     this.messages = [];
     this.currentMsgIndex = -1;
-    this.viewMode = 'html'; // 'html' or 'text'
-    
+    this.viewMode = "html"; // 'html' or 'text'
+
     // Font zoom level (60% to 250%, default 100%)
-    this.fontZoom = parseInt(localStorage.getItem('msg_viewer_font_zoom') || '100', 10);
+    this.fontZoom = parseInt(
+      localStorage.getItem("msg_viewer_font_zoom") || "100",
+      10,
+    );
     if (isNaN(this.fontZoom) || this.fontZoom < 60 || this.fontZoom > 250) {
       this.fontZoom = 100;
     }
 
     // UI general zoom level (70% to 200%, default 100%)
-    this.uiZoom = parseInt(localStorage.getItem('msg_viewer_ui_zoom') || '100', 10);
+    this.uiZoom = parseInt(
+      localStorage.getItem("msg_viewer_ui_zoom") || "100",
+      10,
+    );
     if (isNaN(this.uiZoom) || this.uiZoom < 70 || this.uiZoom > 200) {
       this.uiZoom = 100;
     }
@@ -94,52 +112,53 @@ class MsgViewerApp {
 
   initDOMElements() {
     this.elements = {
-      app: document.getElementById('app'),
-      dropZoneCard: document.getElementById('dropZoneCard'),
-      fileInput: document.getElementById('fileInput'),
-      dragOverlay: document.getElementById('dragOverlay'),
-      sidebar: document.getElementById('sidebar'),
-      sidebarResizer: document.getElementById('sidebarResizer'),
-      fileList: document.getElementById('fileList'),
-      searchInput: document.getElementById('searchInput'),
-      emptyState: document.getElementById('emptyState'),
-      emailDetails: document.getElementById('emailDetails'),
-      
+      app: document.getElementById("app"),
+      dropZoneCard: document.getElementById("dropZoneCard"),
+      fileInput: document.getElementById("fileInput"),
+      dragOverlay: document.getElementById("dragOverlay"),
+      sidebar: document.getElementById("sidebar"),
+      sidebarResizer: document.getElementById("sidebarResizer"),
+      fileList: document.getElementById("fileList"),
+      searchInput: document.getElementById("searchInput"),
+      emptyState: document.getElementById("emptyState"),
+      emailDetails: document.getElementById("emailDetails"),
+
       // Email Header Fields
-      emailSubject: document.getElementById('emailSubject'),
-      emailSender: document.getElementById('emailSender'),
-      emailTo: document.getElementById('emailTo'),
-      emailCcRow: document.getElementById('emailCcRow'),
-      emailCc: document.getElementById('emailCc'),
-      emailPath: document.getElementById('emailPath'),
-      btnOpenPathFolder: document.getElementById('btnOpenPathFolder'),
-      emailDate: document.getElementById('emailDate'),
-      
+      emailSubject: document.getElementById("emailSubject"),
+      emailSender: document.getElementById("emailSender"),
+      emailTo: document.getElementById("emailTo"),
+      emailCcRow: document.getElementById("emailCcRow"),
+      emailCc: document.getElementById("emailCc"),
+      emailPath: document.getElementById("emailPath"),
+      btnOpenPathFolder: document.getElementById("btnOpenPathFolder"),
+      emailDate: document.getElementById("emailDate"),
+
       // View Controls & Content
-      tabHtml: document.getElementById('tabHtml'),
-      tabText: document.getElementById('tabText'),
-      btnFontDecrease: document.getElementById('btnFontDecrease'),
-      btnFontIncrease: document.getElementById('btnFontIncrease'),
-      btnFontReset: document.getElementById('btnFontReset'),
-      fontZoomLevel: document.getElementById('fontZoomLevel'),
+      tabHtml: document.getElementById("tabHtml"),
+      tabText: document.getElementById("tabText"),
+      btnFontDecrease: document.getElementById("btnFontDecrease"),
+      btnFontIncrease: document.getElementById("btnFontIncrease"),
+      btnFontReset: document.getElementById("btnFontReset"),
+      fontZoomLevel: document.getElementById("fontZoomLevel"),
 
-      btnUiZoomDecrease: document.getElementById('btnUiZoomDecrease'),
-      btnUiZoomIncrease: document.getElementById('btnUiZoomIncrease'),
-      btnUiZoomReset: document.getElementById('btnUiZoomReset'),
-      uiZoomLevel: document.getElementById('uiZoomLevel'),
+      btnUiZoomDecrease: document.getElementById("btnUiZoomDecrease"),
+      btnUiZoomIncrease: document.getElementById("btnUiZoomIncrease"),
+      btnUiZoomReset: document.getElementById("btnUiZoomReset"),
+      uiZoomLevel: document.getElementById("uiZoomLevel"),
 
-      attachmentsBar: document.getElementById('attachmentsBar'),
-      attachmentsList: document.getElementById('attachmentsList'),
-      bodyWrapper: document.getElementById('bodyWrapper'),
-      bodyIframe: document.getElementById('bodyIframe'),
-      bodyPlain: document.getElementById('bodyPlain'),
-      
+      attachmentsBar: document.getElementById("attachmentsBar"),
+      attachmentsList: document.getElementById("attachmentsList"),
+      bodyWrapper: document.getElementById("bodyWrapper"),
+      bodyIframe: document.getElementById("bodyIframe"),
+      bodyPlain: document.getElementById("bodyPlain"),
+
       // Actions
-      btnOpen: document.getElementById('btnOpen'),
-      btnPrint: document.getElementById('btnPrint'),
-      btnReload: document.getElementById('btnReload'),
-      btnThemeToggle: document.getElementById('btnThemeToggle'),
-      iconTheme: document.getElementById('iconTheme')
+      btnOpen: document.getElementById("btnOpen"),
+      btnPrint: document.getElementById("btnPrint"),
+      btnDeleteMsg: document.getElementById("btnDeleteMsg"),
+      btnReload: document.getElementById("btnReload"),
+      btnThemeToggle: document.getElementById("btnThemeToggle"),
+      iconTheme: document.getElementById("iconTheme"),
     };
   }
 
@@ -147,11 +166,13 @@ class MsgViewerApp {
     const openFilePicker = async (e) => {
       if (e) e.stopPropagation();
       try {
-        const response = await fetch(`${API_BASE}/api/pick-files`, { method: 'POST' });
+        const response = await fetch(`${API_BASE}/api/pick-files`, {
+          method: "POST",
+        });
         if (response.ok) {
           const data = await response.json();
           if (!data.cancelled && data.messages && data.messages.length > 0) {
-            data.messages.forEach(msg => {
+            data.messages.forEach((msg) => {
               this.messages.push(msg);
             });
             this.renderSidebarList();
@@ -162,7 +183,7 @@ class MsgViewerApp {
           }
         }
       } catch (err) {
-        console.warn('Backend picker unavailable, using fallback input:', err);
+        console.warn("Backend picker unavailable, using fallback input:", err);
       }
       if (this.elements.fileInput) {
         this.elements.fileInput.click();
@@ -172,11 +193,13 @@ class MsgViewerApp {
     const openFolderPicker = async (e) => {
       if (e) e.stopPropagation();
       try {
-        const response = await fetch(`${API_BASE}/api/pick-folder`, { method: 'POST' });
+        const response = await fetch(`${API_BASE}/api/pick-folder`, {
+          method: "POST",
+        });
         if (response.ok) {
           const data = await response.json();
           if (!data.cancelled && data.messages && data.messages.length > 0) {
-            data.messages.forEach(msg => {
+            data.messages.forEach((msg) => {
               this.messages.push(msg);
             });
             this.renderSidebarList();
@@ -187,7 +210,7 @@ class MsgViewerApp {
           }
         }
       } catch (err) {
-        console.warn('Backend folder picker unavailable:', err);
+        console.warn("Backend folder picker unavailable:", err);
       }
       if (this.elements.fileInput) {
         this.elements.fileInput.click();
@@ -196,31 +219,35 @@ class MsgViewerApp {
 
     // File input change
     if (this.elements.fileInput) {
-      this.elements.fileInput.addEventListener('change', (e) => this.handleFilesSelected(e.target.files));
+      this.elements.fileInput.addEventListener("change", (e) =>
+        this.handleFilesSelected(e.target.files),
+      );
     }
     if (this.elements.btnOpen) {
-      this.elements.btnOpen.addEventListener('click', openFilePicker);
+      this.elements.btnOpen.addEventListener("click", openFilePicker);
     }
     if (this.elements.dropZoneCard) {
-      this.elements.dropZoneCard.addEventListener('click', openFilePicker);
+      this.elements.dropZoneCard.addEventListener("click", openFilePicker);
     }
 
     // Drag and Drop Events on Window
-    window.addEventListener('dragover', (e) => {
+    window.addEventListener("dragover", (e) => {
       e.preventDefault();
-      if (this.elements.dragOverlay) this.elements.dragOverlay.classList.add('active');
+      if (this.elements.dragOverlay)
+        this.elements.dragOverlay.classList.add("active");
     });
 
     if (this.elements.dragOverlay) {
-      this.elements.dragOverlay.addEventListener('dragleave', (e) => {
+      this.elements.dragOverlay.addEventListener("dragleave", (e) => {
         e.preventDefault();
-        this.elements.dragOverlay.classList.remove('active');
+        this.elements.dragOverlay.classList.remove("active");
       });
     }
 
-    window.addEventListener('drop', (e) => {
+    window.addEventListener("drop", (e) => {
       e.preventDefault();
-      if (this.elements.dragOverlay) this.elements.dragOverlay.classList.remove('active');
+      if (this.elements.dragOverlay)
+        this.elements.dragOverlay.classList.remove("active");
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         this.handleFilesSelected(e.dataTransfer.files);
       }
@@ -228,41 +255,59 @@ class MsgViewerApp {
 
     // Search filter
     if (this.elements.searchInput) {
-      this.elements.searchInput.addEventListener('input', (e) => this.filterFileList(e.target.value));
+      this.elements.searchInput.addEventListener("input", (e) =>
+        this.filterFileList(e.target.value),
+      );
     }
 
     // View mode tabs
     if (this.elements.tabHtml) {
-      this.elements.tabHtml.addEventListener('click', () => this.setViewMode('html'));
+      this.elements.tabHtml.addEventListener("click", () =>
+        this.setViewMode("html"),
+      );
     }
     if (this.elements.tabText) {
-      this.elements.tabText.addEventListener('click', () => this.setViewMode('text'));
+      this.elements.tabText.addEventListener("click", () =>
+        this.setViewMode("text"),
+      );
     }
 
     if (this.elements.btnFontDecrease) {
-      this.elements.btnFontDecrease.addEventListener('click', () => this.changeFontZoom(-10));
+      this.elements.btnFontDecrease.addEventListener("click", () =>
+        this.changeFontZoom(-10),
+      );
     }
     if (this.elements.btnFontIncrease) {
-      this.elements.btnFontIncrease.addEventListener('click', () => this.changeFontZoom(10));
+      this.elements.btnFontIncrease.addEventListener("click", () =>
+        this.changeFontZoom(10),
+      );
     }
     if (this.elements.btnFontReset) {
-      this.elements.btnFontReset.addEventListener('click', () => this.resetFontZoom());
+      this.elements.btnFontReset.addEventListener("click", () =>
+        this.resetFontZoom(),
+      );
     }
 
     if (this.elements.btnUiZoomDecrease) {
-      this.elements.btnUiZoomDecrease.addEventListener('click', () => this.changeUiZoom(-10));
+      this.elements.btnUiZoomDecrease.addEventListener("click", () =>
+        this.changeUiZoom(-10),
+      );
     }
     if (this.elements.btnUiZoomIncrease) {
-      this.elements.btnUiZoomIncrease.addEventListener('click', () => this.changeUiZoom(10));
+      this.elements.btnUiZoomIncrease.addEventListener("click", () =>
+        this.changeUiZoom(10),
+      );
     }
     if (this.elements.btnUiZoomReset) {
-      this.elements.btnUiZoomReset.addEventListener('click', () => this.resetUiZoom());
+      this.elements.btnUiZoomReset.addEventListener("click", () =>
+        this.resetUiZoom(),
+      );
     }
 
-    window.addEventListener('keydown', (e) => {
+    window.addEventListener("keydown", (e) => {
       if (
-        e.key === 'F5' ||
-        ((e.ctrlKey || e.metaKey) && (e.key === 'r' || e.key === 'R'))
+        e.key === "F5" ||
+        ((e.ctrlKey || e.metaKey) && (e.key === "r" || e.key === "R"))
       ) {
         e.preventDefault();
         window.location.reload();
@@ -270,13 +315,17 @@ class MsgViewerApp {
       }
 
       if (e.ctrlKey || e.metaKey) {
-        if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+        if (e.key === "+" || e.key === "=" || e.code === "NumpadAdd") {
           e.preventDefault();
           this.changeUiZoom(10);
-        } else if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+        } else if (
+          e.key === "-" ||
+          e.key === "_" ||
+          e.code === "NumpadSubtract"
+        ) {
           e.preventDefault();
           this.changeUiZoom(-10);
-        } else if (e.key === '0' || e.code === 'Numpad0') {
+        } else if (e.key === "0" || e.code === "Numpad0") {
           e.preventDefault();
           this.resetUiZoom();
         }
@@ -284,20 +333,25 @@ class MsgViewerApp {
     });
 
     if (this.elements.btnReload) {
-      this.elements.btnReload.addEventListener('click', () => {
+      this.elements.btnReload.addEventListener("click", () => {
         window.location.reload();
       });
     }
 
     // Theme toggle
     if (this.elements.btnThemeToggle) {
-      this.elements.btnThemeToggle.addEventListener('click', () => this.toggleTheme());
+      this.elements.btnThemeToggle.addEventListener("click", () =>
+        this.toggleTheme(),
+      );
     }
 
     // Print button
     if (this.elements.btnPrint) {
-      this.elements.btnPrint.addEventListener('click', () => {
-        if (this.viewMode === 'html' && this.elements.bodyIframe.style.display !== 'none') {
+      this.elements.btnPrint.addEventListener("click", () => {
+        if (
+          this.viewMode === "html" &&
+          this.elements.bodyIframe.style.display !== "none"
+        ) {
           try {
             this.elements.bodyIframe.contentWindow.focus();
             this.elements.bodyIframe.contentWindow.print();
@@ -308,32 +362,50 @@ class MsgViewerApp {
       });
     }
 
+    // Delete .msg file physically button
+    if (this.elements.btnDeleteMsg) {
+      this.elements.btnDeleteMsg.addEventListener("click", () =>
+        this.deleteCurrentMsgFile(),
+      );
+    }
+
     // Open Folder Location button
     if (this.elements.btnOpenPathFolder) {
-      this.elements.btnOpenPathFolder.addEventListener('click', () => this.openFileLocation());
+      this.elements.btnOpenPathFolder.addEventListener("click", () =>
+        this.openFileLocation(),
+      );
     }
   }
 
   initSidebarResizer() {
-    const sidebar = this.elements.sidebar || document.getElementById('sidebar') || document.querySelector('.sidebar');
-    const resizer = this.elements.sidebarResizer || document.getElementById('sidebarResizer');
+    const sidebar =
+      this.elements.sidebar ||
+      document.getElementById("sidebar") ||
+      document.querySelector(".sidebar");
+    const resizer =
+      this.elements.sidebarResizer || document.getElementById("sidebarResizer");
     if (!sidebar || !resizer) return;
 
     const MIN_WIDTH = 220;
     const DEFAULT_WIDTH = 340;
 
     const getMaxWidth = () => {
-      const mainContentWidth = document.querySelector('.main-content')?.clientWidth || window.innerWidth;
+      const mainContentWidth =
+        document.querySelector(".main-content")?.clientWidth ||
+        window.innerWidth;
       return Math.max(MIN_WIDTH, mainContentWidth - 320);
     };
 
     // Restore saved width from localStorage
-    const savedWidth = parseInt(localStorage.getItem('msg_viewer_sidebar_width'), 10);
+    const savedWidth = parseInt(
+      localStorage.getItem("msg_viewer_sidebar_width"),
+      10,
+    );
     if (!isNaN(savedWidth) && savedWidth >= MIN_WIDTH) {
       const maxWidth = getMaxWidth();
       const initialWidth = Math.min(Math.max(savedWidth, MIN_WIDTH), maxWidth);
       sidebar.style.width = `${initialWidth}px`;
-      resizer.setAttribute('aria-valuenow', initialWidth);
+      resizer.setAttribute("aria-valuenow", initialWidth);
     }
 
     let isDragging = false;
@@ -346,8 +418,8 @@ class MsgViewerApp {
       startX = e.clientX;
       startWidth = sidebar.getBoundingClientRect().width;
 
-      document.body.classList.add('is-resizing');
-      resizer.classList.add('active');
+      document.body.classList.add("is-resizing");
+      resizer.classList.add("active");
 
       if (resizer.setPointerCapture && e.pointerId !== undefined) {
         try {
@@ -355,9 +427,9 @@ class MsgViewerApp {
         } catch (_) {}
       }
 
-      window.addEventListener('pointermove', onPointerMove, { passive: false });
-      window.addEventListener('pointerup', onPointerUp);
-      window.addEventListener('pointercancel', onPointerUp);
+      window.addEventListener("pointermove", onPointerMove, { passive: false });
+      window.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("pointercancel", onPointerUp);
     };
 
     const onPointerMove = (e) => {
@@ -369,15 +441,15 @@ class MsgViewerApp {
       const clampedWidth = Math.min(Math.max(targetWidth, MIN_WIDTH), maxWidth);
 
       sidebar.style.width = `${clampedWidth}px`;
-      resizer.setAttribute('aria-valuenow', Math.round(clampedWidth));
+      resizer.setAttribute("aria-valuenow", Math.round(clampedWidth));
     };
 
     const onPointerUp = (e) => {
       if (!isDragging) return;
       isDragging = false;
 
-      document.body.classList.remove('is-resizing');
-      resizer.classList.remove('active');
+      document.body.classList.remove("is-resizing");
+      resizer.classList.remove("active");
 
       if (resizer.releasePointerCapture && e.pointerId !== undefined) {
         try {
@@ -385,42 +457,45 @@ class MsgViewerApp {
         } catch (_) {}
       }
 
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('pointercancel', onPointerUp);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
 
       const currentWidth = Math.round(sidebar.getBoundingClientRect().width);
-      localStorage.setItem('msg_viewer_sidebar_width', currentWidth.toString());
+      localStorage.setItem("msg_viewer_sidebar_width", currentWidth.toString());
     };
 
-    resizer.addEventListener('pointerdown', onPointerDown);
+    resizer.addEventListener("pointerdown", onPointerDown);
 
     // Double-click to reset to default width
-    resizer.addEventListener('dblclick', () => {
+    resizer.addEventListener("dblclick", () => {
       sidebar.style.width = `${DEFAULT_WIDTH}px`;
-      resizer.setAttribute('aria-valuenow', DEFAULT_WIDTH);
-      localStorage.setItem('msg_viewer_sidebar_width', DEFAULT_WIDTH.toString());
+      resizer.setAttribute("aria-valuenow", DEFAULT_WIDTH);
+      localStorage.setItem(
+        "msg_viewer_sidebar_width",
+        DEFAULT_WIDTH.toString(),
+      );
     });
 
     // Keyboard accessibility (ArrowLeft, ArrowRight, Home, End, Enter)
-    resizer.addEventListener('keydown', (e) => {
+    resizer.addEventListener("keydown", (e) => {
       const step = e.shiftKey ? 50 : 20;
       const currentWidth = sidebar.getBoundingClientRect().width;
       let newWidth = currentWidth;
 
-      if (e.key === 'ArrowLeft') {
+      if (e.key === "ArrowLeft") {
         newWidth = Math.max(MIN_WIDTH, currentWidth - step);
         e.preventDefault();
-      } else if (e.key === 'ArrowRight') {
+      } else if (e.key === "ArrowRight") {
         newWidth = Math.min(getMaxWidth(), currentWidth + step);
         e.preventDefault();
-      } else if (e.key === 'Home') {
+      } else if (e.key === "Home") {
         newWidth = MIN_WIDTH;
         e.preventDefault();
-      } else if (e.key === 'End') {
+      } else if (e.key === "End") {
         newWidth = getMaxWidth();
         e.preventDefault();
-      } else if (e.key === 'Enter' || e.key === ' ') {
+      } else if (e.key === "Enter" || e.key === " ") {
         newWidth = DEFAULT_WIDTH;
         e.preventDefault();
       } else {
@@ -429,55 +504,67 @@ class MsgViewerApp {
 
       const rounded = Math.round(newWidth);
       sidebar.style.width = `${rounded}px`;
-      resizer.setAttribute('aria-valuenow', rounded);
-      localStorage.setItem('msg_viewer_sidebar_width', rounded.toString());
+      resizer.setAttribute("aria-valuenow", rounded);
+      localStorage.setItem("msg_viewer_sidebar_width", rounded.toString());
     });
 
     // Window resize adaptation
-    window.addEventListener('resize', () => {
+    window.addEventListener("resize", () => {
       const currentWidth = sidebar.getBoundingClientRect().width;
       const maxWidth = getMaxWidth();
       if (currentWidth > maxWidth) {
         sidebar.style.width = `${maxWidth}px`;
-        resizer.setAttribute('aria-valuenow', Math.round(maxWidth));
-        localStorage.setItem('msg_viewer_sidebar_width', Math.round(maxWidth).toString());
+        resizer.setAttribute("aria-valuenow", Math.round(maxWidth));
+        localStorage.setItem(
+          "msg_viewer_sidebar_width",
+          Math.round(maxWidth).toString(),
+        );
       }
     });
   }
 
   initTheme() {
-    const savedTheme = localStorage.getItem('msg_viewer_theme') || 
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const savedTheme =
+      localStorage.getItem("msg_viewer_theme") ||
+      (window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light");
     this.setTheme(savedTheme);
   }
 
   setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('msg_viewer_theme', theme);
-    
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("msg_viewer_theme", theme);
+
     if (this.elements.iconTheme) {
-      if (theme === 'dark') {
-        this.elements.iconTheme.setAttribute('d', 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z');
+      if (theme === "dark") {
+        this.elements.iconTheme.setAttribute(
+          "d",
+          "M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z",
+        );
       } else {
-        this.elements.iconTheme.setAttribute('d', 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z');
+        this.elements.iconTheme.setAttribute(
+          "d",
+          "M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z",
+        );
       }
     }
   }
 
   toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    this.setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    const currentTheme = document.documentElement.getAttribute("data-theme");
+    this.setTheme(currentTheme === "dark" ? "light" : "dark");
   }
 
   async parseMsgWithServer(arrayBuffer, file) {
     try {
-      const headers = { 'Content-Type': 'application/octet-stream' };
+      const headers = { "Content-Type": "application/octet-stream" };
       if (file) {
-        headers['X-File-Name'] = encodeURIComponent(file.name || '');
-        headers['X-File-Size'] = String(file.size || 0);
+        headers["X-File-Name"] = encodeURIComponent(file.name || "");
+        headers["X-File-Size"] = String(file.size || 0);
       }
       const response = await fetch(`${API_BASE}/api/parse`, {
-        method: 'POST',
+        method: "POST",
         headers: headers,
         body: arrayBuffer,
       });
@@ -490,9 +577,11 @@ class MsgViewerApp {
   }
 
   async handleFilesSelected(files) {
-    const msgFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.msg'));
+    const msgFiles = Array.from(files).filter((f) =>
+      f.name.toLowerCase().endsWith(".msg"),
+    );
     if (msgFiles.length === 0) {
-      alert('Please select a file with .msg extension');
+      alert("Please select a file with .msg extension");
       return;
     }
 
@@ -505,14 +594,18 @@ class MsgViewerApp {
           const parser = new MsgParser(arrayBuffer);
           parsedData = parser.parse();
         }
-        
+
         parsedData.fileName = file.name;
         parsedData.fileSize = file.size;
-        parsedData.filePath = parsedData.filePath || file.path || file.webkitRelativePath || file.name;
-        
+        parsedData.filePath =
+          parsedData.filePath ||
+          file.path ||
+          file.webkitRelativePath ||
+          file.name;
+
         this.messages.push(parsedData);
       } catch (err) {
-        console.error('Error parsing .msg file:', err);
+        console.error("Error parsing .msg file:", err);
         alert(`Could not read file ${file.name}: ${err.message}`);
       }
     }
@@ -524,21 +617,25 @@ class MsgViewerApp {
   }
 
   renderSidebarList() {
-    this.elements.fileList.innerHTML = '';
-    
+    this.elements.fileList.innerHTML = "";
+
     this.messages.forEach((msg, idx) => {
-      const item = document.createElement('div');
-      item.className = `file-item ${idx === this.currentMsgIndex ? 'active' : ''}`;
-      const senderStr = formatSenderDisplay(msg.senderName, msg.senderEmail, 'Unknown');
+      const item = document.createElement("div");
+      item.className = `file-item ${idx === this.currentMsgIndex ? "active" : ""}`;
+      const senderStr = formatSenderDisplay(
+        msg.senderName,
+        msg.senderEmail,
+        "Unknown",
+      );
       item.innerHTML = `
-        <div class="file-item-subject">${escapeHtml(msg.subject || '(No Subject)')}</div>
+        <div class="file-item-subject">${escapeHtml(msg.subject || "(No Subject)")}</div>
         <div class="file-item-meta">
           <span class="file-item-sender">${escapeHtml(senderStr)}</span>
-          <span>${msg.attachments ? msg.attachments.length + ' 📎' : ''}</span>
+          <span>${msg.attachments ? msg.attachments.length + " 📎" : ""}</span>
         </div>
       `;
-      
-      item.addEventListener('click', () => this.selectMessage(idx));
+
+      item.addEventListener("click", () => this.selectMessage(idx));
       this.elements.fileList.appendChild(item);
     });
   }
@@ -546,49 +643,58 @@ class MsgViewerApp {
   filterFileList(query) {
     const q = query.toLowerCase();
     const items = this.elements.fileList.children;
-    
+
     this.messages.forEach((msg, idx) => {
-      const senderStr = formatSenderDisplay(msg.senderName, msg.senderEmail, '');
-      const match = (msg.subject && msg.subject.toLowerCase().includes(q)) ||
-                    (msg.senderName && msg.senderName.toLowerCase().includes(q)) ||
-                    (msg.senderEmail && msg.senderEmail.toLowerCase().includes(q)) ||
-                    (senderStr && senderStr.toLowerCase().includes(q));
-      
+      const senderStr = formatSenderDisplay(
+        msg.senderName,
+        msg.senderEmail,
+        "",
+      );
+      const match =
+        (msg.subject && msg.subject.toLowerCase().includes(q)) ||
+        (msg.senderName && msg.senderName.toLowerCase().includes(q)) ||
+        (msg.senderEmail && msg.senderEmail.toLowerCase().includes(q)) ||
+        (senderStr && senderStr.toLowerCase().includes(q));
+
       if (items[idx]) {
-        items[idx].style.display = match ? 'flex' : 'none';
+        items[idx].style.display = match ? "flex" : "none";
       }
     });
   }
 
   selectMessage(index) {
     if (index < 0 || index >= this.messages.length) return;
-    
+
     this.currentMsgIndex = index;
     const msg = this.messages[index];
-    
+
     // Update Active Class in Sidebar
     Array.from(this.elements.fileList.children).forEach((el, i) => {
-      el.classList.toggle('active', i === index);
+      el.classList.toggle("active", i === index);
     });
 
     // Show Details view, Hide Empty State
-    this.elements.emptyState.style.display = 'none';
-    this.elements.emailDetails.style.display = 'flex';
+    this.elements.emptyState.style.display = "none";
+    this.elements.emailDetails.style.display = "flex";
 
     // Populate Header Fields
-    this.elements.emailSubject.textContent = msg.subject || '(No Subject)';
-    this.elements.emailSender.textContent = formatSenderDisplay(msg.senderName, msg.senderEmail, 'Unknown');
-    this.elements.emailTo.textContent = msg.displayTo || '(No Recipients)';
-    
+    this.elements.emailSubject.textContent = msg.subject || "(No Subject)";
+    this.elements.emailSender.textContent = formatSenderDisplay(
+      msg.senderName,
+      msg.senderEmail,
+      "Unknown",
+    );
+    this.elements.emailTo.textContent = msg.displayTo || "(No Recipients)";
+
     if (msg.displayCc) {
-      this.elements.emailCcRow.style.display = 'contents';
+      this.elements.emailCcRow.style.display = "contents";
       this.elements.emailCc.textContent = msg.displayCc;
     } else {
-      this.elements.emailCcRow.style.display = 'none';
+      this.elements.emailCcRow.style.display = "none";
     }
 
     // Populate Path Field
-    const currentPath = msg.filePath || msg.fileName || '';
+    const currentPath = msg.filePath || msg.fileName || "";
     if (this.elements.emailPath) {
       this.elements.emailPath.textContent = currentPath;
       this.elements.emailPath.title = currentPath;
@@ -596,32 +702,34 @@ class MsgViewerApp {
 
     // Attachments
     if (this.elements.attachmentsList) {
-      this.elements.attachmentsList.innerHTML = '';
+      this.elements.attachmentsList.innerHTML = "";
       if (msg.attachments && msg.attachments.length > 0) {
-        if (this.elements.attachmentsBar) this.elements.attachmentsBar.style.display = 'flex';
-        msg.attachments.forEach(att => {
-          const tag = document.createElement('div');
-          tag.className = 'attachment-tag';
+        if (this.elements.attachmentsBar)
+          this.elements.attachmentsBar.style.display = "flex";
+        msg.attachments.forEach((att) => {
+          const tag = document.createElement("div");
+          tag.className = "attachment-tag";
           tag.innerHTML = `
             <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
             <span>${escapeHtml(att.fileName)}</span>
             <span style="opacity: 0.6; font-size: 0.75rem;">(${this.formatBytes(att.size)})</span>
           `;
-          tag.addEventListener('click', () => this.downloadAttachment(att));
+          tag.addEventListener("click", () => this.downloadAttachment(att));
           this.elements.attachmentsList.appendChild(tag);
         });
       } else {
-        if (this.elements.attachmentsBar) this.elements.attachmentsBar.style.display = 'none';
+        if (this.elements.attachmentsBar)
+          this.elements.attachmentsBar.style.display = "none";
       }
     }
 
     // Set Initial View (HTML if available, else Plain Text)
     if (msg.bodyHtml) {
-      this.elements.tabHtml.style.display = 'inline-block';
-      this.setViewMode('html');
+      this.elements.tabHtml.style.display = "inline-block";
+      this.setViewMode("html");
     } else {
-      this.elements.tabHtml.style.display = 'none';
-      this.setViewMode('text');
+      this.elements.tabHtml.style.display = "none";
+      this.setViewMode("text");
     }
   }
 
@@ -630,13 +738,13 @@ class MsgViewerApp {
     const msg = this.messages[this.currentMsgIndex];
     if (!msg) return;
 
-    this.elements.tabHtml.classList.toggle('active', mode === 'html');
-    this.elements.tabText.classList.toggle('active', mode === 'text');
+    this.elements.tabHtml.classList.toggle("active", mode === "html");
+    this.elements.tabText.classList.toggle("active", mode === "text");
 
-    if (mode === 'html' && msg.bodyHtml) {
-      this.elements.bodyIframe.style.display = 'block';
-      this.elements.bodyPlain.style.display = 'none';
-      
+    if (mode === "html" && msg.bodyHtml) {
+      this.elements.bodyIframe.style.display = "block";
+      this.elements.bodyPlain.style.display = "none";
+
       const cleanHtml = sanitizeHtml(msg.bodyHtml);
       const fullDoc = `
         <!DOCTYPE html>
@@ -655,8 +763,10 @@ class MsgViewerApp {
         <body>${cleanHtml}</body>
         </html>
       `;
-      
-      const iframeDoc = this.elements.bodyIframe.contentDocument || this.elements.bodyIframe.contentWindow.document;
+
+      const iframeDoc =
+        this.elements.bodyIframe.contentDocument ||
+        this.elements.bodyIframe.contentWindow.document;
       iframeDoc.open();
       iframeDoc.write(fullDoc);
       iframeDoc.close();
@@ -664,9 +774,10 @@ class MsgViewerApp {
         iframeDoc.body.style.zoom = String(this.fontZoom / 100);
       }
     } else {
-      this.elements.bodyIframe.style.display = 'none';
-      this.elements.bodyPlain.style.display = 'block';
-      this.elements.bodyPlain.textContent = msg.bodyText || '(This email has no body text)';
+      this.elements.bodyIframe.style.display = "none";
+      this.elements.bodyPlain.style.display = "block";
+      this.elements.bodyPlain.textContent =
+        msg.bodyText || "(This email has no body text)";
     }
     this.applyFontZoom();
   }
@@ -675,7 +786,7 @@ class MsgViewerApp {
     const newZoom = Math.min(250, Math.max(60, this.fontZoom + delta));
     if (newZoom !== this.fontZoom) {
       this.fontZoom = newZoom;
-      localStorage.setItem('msg_viewer_font_zoom', String(this.fontZoom));
+      localStorage.setItem("msg_viewer_font_zoom", String(this.fontZoom));
       this.applyFontZoom();
     }
   }
@@ -683,7 +794,7 @@ class MsgViewerApp {
   resetFontZoom() {
     if (this.fontZoom !== 100) {
       this.fontZoom = 100;
-      localStorage.setItem('msg_viewer_font_zoom', '100');
+      localStorage.setItem("msg_viewer_font_zoom", "100");
       this.applyFontZoom();
     }
   }
@@ -699,12 +810,14 @@ class MsgViewerApp {
 
     if (this.elements.bodyIframe) {
       try {
-        const iframeDoc = this.elements.bodyIframe.contentDocument || this.elements.bodyIframe.contentWindow.document;
+        const iframeDoc =
+          this.elements.bodyIframe.contentDocument ||
+          this.elements.bodyIframe.contentWindow.document;
         if (iframeDoc && iframeDoc.body) {
           iframeDoc.body.style.zoom = String(this.fontZoom / 100);
         }
       } catch (e) {
-        console.warn('Could not apply zoom to iframe body:', e);
+        console.warn("Could not apply zoom to iframe body:", e);
       }
     }
   }
@@ -713,7 +826,7 @@ class MsgViewerApp {
     const newZoom = Math.min(200, Math.max(70, this.uiZoom + delta));
     if (newZoom !== this.uiZoom) {
       this.uiZoom = newZoom;
-      localStorage.setItem('msg_viewer_ui_zoom', String(this.uiZoom));
+      localStorage.setItem("msg_viewer_ui_zoom", String(this.uiZoom));
       this.applyUiZoom();
     }
   }
@@ -721,7 +834,7 @@ class MsgViewerApp {
   resetUiZoom() {
     if (this.uiZoom !== 100) {
       this.uiZoom = 100;
-      localStorage.setItem('msg_viewer_ui_zoom', '100');
+      localStorage.setItem("msg_viewer_ui_zoom", "100");
       this.applyUiZoom();
     }
   }
@@ -734,11 +847,13 @@ class MsgViewerApp {
   }
 
   downloadAttachment(attachment) {
-    const blob = new Blob([attachment.content], { type: attachment.mimeType || 'application/octet-stream' });
+    const blob = new Blob([attachment.content], {
+      type: attachment.mimeType || "application/octet-stream",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = attachment.fileName || 'attachment';
+    a.download = attachment.fileName || "attachment";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -746,17 +861,17 @@ class MsgViewerApp {
   }
 
   formatBytes(bytes) {
-    if (!bytes) return '0 B';
+    if (!bytes) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   }
 
   checkUrlParams() {
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      let filePath = urlParams.get('file');
+      let filePath = urlParams.get("file");
       if (!filePath && window.location.hash) {
         const match = window.location.hash.match(/file=([^&]+)/);
         if (match) filePath = decodeURIComponent(match[1]);
@@ -765,23 +880,26 @@ class MsgViewerApp {
         this.loadFileFromPath(filePath);
       }
     } catch (e) {
-      console.error('Error parsing URL params:', e);
+      console.error("Error parsing URL params:", e);
     }
   }
 
   async loadFileFromPath(filePath) {
     try {
-      const response = await fetch(`${API_BASE}/api/load-file?path=${encodeURIComponent(filePath)}`);
+      const response = await fetch(
+        `${API_BASE}/api/load-file?path=${encodeURIComponent(filePath)}`,
+      );
       if (response.ok) {
         const data = await response.json();
         data.filePath = data.filePath || filePath;
-        data.fileName = data.fileName || filePath.split(/[\\/]/).pop() || 'message.msg';
+        data.fileName =
+          data.fileName || filePath.split(/[\\/]/).pop() || "message.msg";
         this.messages.push(data);
         this.renderSidebarList();
         this.selectMessage(this.messages.length - 1);
       }
     } catch (err) {
-      console.error('Error loading file from path:', err);
+      console.error("Error loading file from path:", err);
     }
   }
 
@@ -791,14 +909,14 @@ class MsgViewerApp {
     }
     if (!msg) return;
 
-    const path = msg.filePath || msg.fileName || '';
+    const path = msg.filePath || msg.fileName || "";
     const btn = this.elements.btnOpenPathFolder;
-    const originalHtml = btn ? btn.innerHTML : '';
+    const originalHtml = btn ? btn.innerHTML : "";
 
     try {
       const response = await fetch(`${API_BASE}/api/open-folder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path: path }),
       });
 
@@ -813,7 +931,7 @@ class MsgViewerApp {
             }
           }
           if (btn) {
-            btn.classList.add('btn-success');
+            btn.classList.add("btn-success");
             btn.innerHTML = `
               <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -821,7 +939,7 @@ class MsgViewerApp {
               <span>Opened</span>
             `;
             setTimeout(() => {
-              btn.classList.remove('btn-success');
+              btn.classList.remove("btn-success");
               btn.innerHTML = originalHtml;
             }, 2000);
           }
@@ -829,7 +947,7 @@ class MsgViewerApp {
         }
       }
     } catch (err) {
-      console.warn('Backend server not available for opening folder:', err);
+      console.warn("Backend server not available for opening folder:", err);
     }
 
     if (navigator.clipboard && path) {
@@ -849,9 +967,70 @@ class MsgViewerApp {
       } catch (clipErr) {}
     }
   }
+
+  async deleteCurrentMsgFile() {
+    if (
+      this.currentMsgIndex < 0 ||
+      this.currentMsgIndex >= this.messages.length
+    )
+      return;
+    const msg = this.messages[this.currentMsgIndex];
+    if (!msg) return;
+
+    const path = msg.filePath || msg.fileName || "";
+    const displayPath =
+      msg.filePath || msg.fileName || msg.subject || "email.msg";
+
+    const confirmed = confirm(
+      `¿Estás seguro de que deseas enviar este archivo a la papelera de reciclaje?\n\n«${displayPath}»`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/delete-file`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: path,
+          fileName: msg.fileName || "",
+          fileSize: msg.fileSize || null,
+        }),
+      });
+
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.success) {
+          this.messages.splice(this.currentMsgIndex, 1);
+          if (this.messages.length === 0) {
+            this.currentMsgIndex = -1;
+            if (this.elements.emptyState)
+              this.elements.emptyState.style.display = "flex";
+            if (this.elements.emailDetails)
+              this.elements.emailDetails.style.display = "none";
+          } else {
+            const nextIdx = Math.min(
+              this.currentMsgIndex,
+              this.messages.length - 1,
+            );
+            this.selectMessage(nextIdx);
+          }
+          this.renderSidebarList();
+          return;
+        }
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        alert(
+          `No se pudo mover el archivo a la papelera: ${errData.error || response.statusText}`,
+        );
+      }
+    } catch (err) {
+      alert(`No se pudo mover el archivo a la papelera: ${err.message || err}`);
+    }
+  }
 }
 
 // Initialize Application on DOM Ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
   window.app = new MsgViewerApp();
 });
