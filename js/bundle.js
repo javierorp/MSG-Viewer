@@ -64,6 +64,9 @@
       zoomIn: "Aumentar tamaño de fuente",
       zoomOut: "Disminuir tamaño de fuente",
       zoomReset: "Restablecer tamaño de fuente",
+      uiZoomIn: "Aumentar zoom de la interfaz (Ctrl + +)",
+      uiZoomOut: "Disminuir zoom de la interfaz (Ctrl + -)",
+      uiZoomReset: "Restablecer zoom de la interfaz (Ctrl + 0)",
       resizeSidebar:
         "Arrastrar para cambiar el tamaño del panel (doble clic para restablecer)",
       clearAll: "Limpiar lista",
@@ -124,6 +127,9 @@
       zoomIn: "Increase font size",
       zoomOut: "Decrease font size",
       zoomReset: "Reset font size",
+      uiZoomIn: "Increase interface zoom (Ctrl + +)",
+      uiZoomOut: "Decrease interface zoom (Ctrl + -)",
+      uiZoomReset: "Reset interface zoom (Ctrl + 0)",
       resizeSidebar: "Drag to resize sidebar (double-click to reset)",
       clearAll: "Clear list",
       clearAllTitle: "Remove all saved emails from list",
@@ -1023,6 +1029,15 @@
         this.fontZoom = 100;
       }
 
+      // UI general zoom level (70% to 200%, default 100%)
+      this.uiZoom = parseInt(
+        localStorage.getItem("msg_viewer_ui_zoom") || "100",
+        10,
+      );
+      if (isNaN(this.uiZoom) || this.uiZoom < 70 || this.uiZoom > 200) {
+        this.uiZoom = 100;
+      }
+
       this.storage = new MsgStorage();
 
       this.initDOMElements();
@@ -1031,6 +1046,7 @@
       this.initTheme();
       this.applyLanguage(this.currentLang);
       this.applyFontZoom();
+      this.applyUiZoom();
 
       this.initData();
     }
@@ -1146,6 +1162,11 @@
         btnFontIncrease: document.getElementById("btnFontIncrease"),
         btnFontReset: document.getElementById("btnFontReset"),
         fontZoomLevel: document.getElementById("fontZoomLevel"),
+
+        btnUiZoomDecrease: document.getElementById("btnUiZoomDecrease"),
+        btnUiZoomIncrease: document.getElementById("btnUiZoomIncrease"),
+        btnUiZoomReset: document.getElementById("btnUiZoomReset"),
+        uiZoomLevel: document.getElementById("uiZoomLevel"),
 
         attachmentsSection: document.getElementById("attachmentsSection"),
         attachmentsCount: document.getElementById("attachmentsCount"),
@@ -1328,6 +1349,41 @@
           this.resetFontZoom(),
         );
       }
+
+      if (this.elements.btnUiZoomDecrease) {
+        this.elements.btnUiZoomDecrease.addEventListener("click", () =>
+          this.changeUiZoom(-10),
+        );
+      }
+      if (this.elements.btnUiZoomIncrease) {
+        this.elements.btnUiZoomIncrease.addEventListener("click", () =>
+          this.changeUiZoom(10),
+        );
+      }
+      if (this.elements.btnUiZoomReset) {
+        this.elements.btnUiZoomReset.addEventListener("click", () =>
+          this.resetUiZoom(),
+        );
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          if (e.key === "+" || e.key === "=" || e.code === "NumpadAdd") {
+            e.preventDefault();
+            this.changeUiZoom(10);
+          } else if (
+            e.key === "-" ||
+            e.key === "_" ||
+            e.code === "NumpadSubtract"
+          ) {
+            e.preventDefault();
+            this.changeUiZoom(-10);
+          } else if (e.key === "0" || e.code === "Numpad0") {
+            e.preventDefault();
+            this.resetUiZoom();
+          }
+        }
+      });
 
       if (this.elements.btnThemeToggle) {
         this.elements.btnThemeToggle.addEventListener("click", () =>
@@ -2205,6 +2261,30 @@
           console.warn("Could not apply zoom to iframe body:", e);
         }
       }
+    }
+
+    changeUiZoom(delta) {
+      const newZoom = Math.min(200, Math.max(70, this.uiZoom + delta));
+      if (newZoom !== this.uiZoom) {
+        this.uiZoom = newZoom;
+        localStorage.setItem("msg_viewer_ui_zoom", String(this.uiZoom));
+        this.applyUiZoom();
+      }
+    }
+
+    resetUiZoom() {
+      if (this.uiZoom !== 100) {
+        this.uiZoom = 100;
+        localStorage.setItem("msg_viewer_ui_zoom", "100");
+        this.applyUiZoom();
+      }
+    }
+
+    applyUiZoom() {
+      if (this.elements.uiZoomLevel) {
+        this.elements.uiZoomLevel.textContent = `${this.uiZoom}%`;
+      }
+      document.documentElement.style.zoom = String(this.uiZoom / 100);
     }
 
     previewAttachment(attachment) {

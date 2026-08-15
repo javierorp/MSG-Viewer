@@ -12,13 +12,21 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="stylesheet" href="css/styles.css" />
     <script>
-      // Prevent theme Flash of Unstyled Content (FOUC)
+      // Prevent theme and UI zoom Flash of Unstyled Content (FOUC)
       (function () {
-        const saved = localStorage.getItem("msg_viewer_theme");
-        if (saved) {
-          document.documentElement.setAttribute("data-theme", saved);
+        const savedTheme = localStorage.getItem("msg_viewer_theme");
+        if (savedTheme) {
+          document.documentElement.setAttribute("data-theme", savedTheme);
         } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
           document.documentElement.setAttribute("data-theme", "dark");
+        }
+
+        const savedZoom = localStorage.getItem("msg_viewer_ui_zoom");
+        if (savedZoom) {
+          const z = parseInt(savedZoom, 10);
+          if (!isNaN(z) && z >= 70 && z <= 200) {
+            document.documentElement.style.zoom = String(z / 100);
+          }
         }
       })();
     </script>
@@ -79,6 +87,7 @@
             id="btnOpen"
             class="btn btn-primary"
             title="Open .msg file"
+            data-i18n-title="openMsg"
           >
             <svg
               width="18"
@@ -101,6 +110,7 @@
             id="btnOpenFolder"
             class="btn btn-secondary"
             title="Open folder with .msg files"
+            data-i18n-title="openFolder"
           >
             <svg
               width="18"
@@ -118,6 +128,67 @@
             </svg>
             <span data-i18n="openFolder">Open Folder</span>
           </button>
+
+          <!-- General UI Zoom Controls -->
+          <div
+            class="zoom-controls ui-zoom-controls"
+            role="group"
+            aria-label="Interface Zoom Controls"
+          >
+            <button
+              id="btnUiZoomDecrease"
+              class="zoom-btn zoom-btn-icon"
+              title="Disminuir zoom de la interfaz (Ctrl + -)"
+              data-i18n-title="uiZoomOut"
+              aria-label="Disminuir zoom de la interfaz"
+            >
+              <svg
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M5 12h14"
+                />
+              </svg>
+            </button>
+            <button
+              id="btnUiZoomReset"
+              class="zoom-btn zoom-btn-value"
+              title="Restablecer zoom de la interfaz (Ctrl + 0)"
+              data-i18n-title="uiZoomReset"
+              aria-label="Restablecer zoom de la interfaz"
+            >
+              <span id="uiZoomLevel">100%</span>
+            </button>
+            <button
+              id="btnUiZoomIncrease"
+              class="zoom-btn zoom-btn-icon"
+              title="Aumentar zoom de la interfaz (Ctrl + +)"
+              data-i18n-title="uiZoomIn"
+              aria-label="Aumentar zoom de la interfaz"
+            >
+              <svg
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2.5"
+                  d="M12 5v14M5 12h14"
+                />
+              </svg>
+            </button>
+          </div>
 
           <button
             id="btnThemeToggle"

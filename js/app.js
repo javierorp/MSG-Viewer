@@ -77,11 +77,18 @@ class MsgViewerApp {
       this.fontZoom = 100;
     }
 
+    // UI general zoom level (70% to 200%, default 100%)
+    this.uiZoom = parseInt(localStorage.getItem('msg_viewer_ui_zoom') || '100', 10);
+    if (isNaN(this.uiZoom) || this.uiZoom < 70 || this.uiZoom > 200) {
+      this.uiZoom = 100;
+    }
+
     this.initDOMElements();
     this.initEventListeners();
     this.initSidebarResizer();
     this.initTheme();
     this.applyFontZoom();
+    this.applyUiZoom();
     this.checkUrlParams();
   }
 
@@ -115,6 +122,12 @@ class MsgViewerApp {
       btnFontIncrease: document.getElementById('btnFontIncrease'),
       btnFontReset: document.getElementById('btnFontReset'),
       fontZoomLevel: document.getElementById('fontZoomLevel'),
+
+      btnUiZoomDecrease: document.getElementById('btnUiZoomDecrease'),
+      btnUiZoomIncrease: document.getElementById('btnUiZoomIncrease'),
+      btnUiZoomReset: document.getElementById('btnUiZoomReset'),
+      uiZoomLevel: document.getElementById('uiZoomLevel'),
+
       attachmentsBar: document.getElementById('attachmentsBar'),
       attachmentsList: document.getElementById('attachmentsList'),
       bodyWrapper: document.getElementById('bodyWrapper'),
@@ -234,6 +247,31 @@ class MsgViewerApp {
     if (this.elements.btnFontReset) {
       this.elements.btnFontReset.addEventListener('click', () => this.resetFontZoom());
     }
+
+    if (this.elements.btnUiZoomDecrease) {
+      this.elements.btnUiZoomDecrease.addEventListener('click', () => this.changeUiZoom(-10));
+    }
+    if (this.elements.btnUiZoomIncrease) {
+      this.elements.btnUiZoomIncrease.addEventListener('click', () => this.changeUiZoom(10));
+    }
+    if (this.elements.btnUiZoomReset) {
+      this.elements.btnUiZoomReset.addEventListener('click', () => this.resetUiZoom());
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+          e.preventDefault();
+          this.changeUiZoom(10);
+        } else if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+          e.preventDefault();
+          this.changeUiZoom(-10);
+        } else if (e.key === '0' || e.code === 'Numpad0') {
+          e.preventDefault();
+          this.resetUiZoom();
+        }
+      }
+    });
 
     // Theme toggle
     if (this.elements.btnThemeToggle) {
@@ -653,6 +691,30 @@ class MsgViewerApp {
         console.warn('Could not apply zoom to iframe body:', e);
       }
     }
+  }
+
+  changeUiZoom(delta) {
+    const newZoom = Math.min(200, Math.max(70, this.uiZoom + delta));
+    if (newZoom !== this.uiZoom) {
+      this.uiZoom = newZoom;
+      localStorage.setItem('msg_viewer_ui_zoom', String(this.uiZoom));
+      this.applyUiZoom();
+    }
+  }
+
+  resetUiZoom() {
+    if (this.uiZoom !== 100) {
+      this.uiZoom = 100;
+      localStorage.setItem('msg_viewer_ui_zoom', '100');
+      this.applyUiZoom();
+    }
+  }
+
+  applyUiZoom() {
+    if (this.elements.uiZoomLevel) {
+      this.elements.uiZoomLevel.textContent = `${this.uiZoom}%`;
+    }
+    document.documentElement.style.zoom = String(this.uiZoom / 100);
   }
 
   downloadAttachment(attachment) {

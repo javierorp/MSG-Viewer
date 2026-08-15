@@ -79,6 +79,9 @@
 
 html, body {
   height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
   font-family: var(--font-main);
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -90,8 +93,9 @@ html, body {
 #app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
 /* Header & Top Bar */
@@ -100,18 +104,29 @@ html, body {
   align-items: center;
   justify-content: space-between;
   height: 60px;
-  padding: 0 20px;
+  min-height: 60px;
+  padding: 0 16px;
   background: var(--bg-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);
   z-index: 10;
+  gap: 12px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.top-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .brand-icon {
@@ -124,6 +139,7 @@ html, body {
   justify-content: center;
   color: white;
   box-shadow: 0 4px 10px rgba(29, 78, 216, 0.3);
+  flex-shrink: 0;
 }
 
 .brand-title {
@@ -132,12 +148,14 @@ html, body {
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .top-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 /* Language Selector Dropdown Component */
@@ -265,7 +283,7 @@ html, body {
 .main-content {
   display: flex;
   flex: 1;
-  height: calc(100vh - 60px);
+  min-height: 0;
   position: relative;
   overflow: hidden;
 }
@@ -274,7 +292,7 @@ html, body {
 .sidebar {
   width: 340px;
   min-width: 220px;
-  max-width: 80vw;
+  max-width: 80%;
   background: var(--bg-secondary);
   border-right: none;
   display: flex;
@@ -953,6 +971,24 @@ body.is-resizing iframe {
   color: var(--accent-primary);
 }
 
+/* UI General Zoom Controls in Top Bar */
+.ui-zoom-controls {
+  flex-shrink: 0;
+  height: 36px;
+  background: var(--bg-secondary);
+}
+
+.ui-zoom-controls .zoom-btn-icon {
+  width: 30px;
+  height: 28px;
+}
+
+.ui-zoom-controls .zoom-btn-value {
+  height: 28px;
+  min-width: 48px;
+  font-size: 0.78rem;
+}
+
 /* Print Button in Controls Bar */
 .btn-print {
   display: inline-flex;
@@ -1041,9 +1077,9 @@ body.is-resizing iframe {
 }
 
 .modal-container {
-  width: 90vw;
+  width: 90%;
   max-width: 900px;
-  max-height: 85vh;
+  max-height: 85%;
   background: var(--bg-secondary);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -1130,10 +1166,34 @@ body.is-resizing iframe {
   background: var(--text-muted);
 }
 
-/* Responsive Rules */
+/* Responsive Rules for Narrow Screens and High Zoom Levels */
+@media (max-width: 1100px) {
+  .top-actions {
+    gap: 6px;
+  }
+  .btn {
+    padding: 7px 10px;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 950px) {
+  .btn-primary span,
+  .btn-secondary span {
+    display: none;
+  }
+  .btn-primary,
+  .btn-secondary {
+    padding: 8px 10px;
+  }
+}
+
 @media (max-width: 860px) {
   .sidebar {
     width: 260px;
+  }
+  .brand-title {
+    display: none;
   }
   .email-header-card, .email-body-wrapper, .attachments-section {
     padding-left: 16px;
@@ -1242,6 +1302,7 @@ body.is-resizing iframe {
     box-shadow: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    zoom: 1 !important;
   }
 
   .email-subject {

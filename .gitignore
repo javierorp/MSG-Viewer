@@ -21,9 +21,11 @@ sdist/
 var/
 wheels/
 *.egg-info/
-.installed.cfg
 *.egg
 *.spec
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
 
 # Virtual environments / Node
 node_modules/
