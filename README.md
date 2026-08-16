@@ -6,6 +6,8 @@
 
 **MSG Viewer** is a lightweight, secure, and fully offline Outlook `.msg` file viewer designed for Windows. It allows users to open, inspect, and extract attachments from Microsoft Outlook message files without requiring Microsoft Outlook, administrative permissions, or uploading sensitive data to external servers.
 
+![MSG Viewer Preview](docs/images/preview.png)
+
 ---
 
 ## ✨ Features
