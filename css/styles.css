@@ -769,39 +769,6 @@ body.is-resizing iframe {
   line-height: 1.4;
 }
 
-.btn-open-folder {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  white-space: nowrap;
-  padding: 5px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  transition: all var(--transition-fast);
-}
-
-.btn-open-folder:hover {
-  background-color: var(--bg-hover);
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-  transform: translateY(-1px);
-}
-
-.btn-open-folder:active {
-  transform: translateY(0);
-}
-
-.btn-open-folder.btn-success {
-  background-color: var(--success);
-  border-color: var(--success);
-  color: #ffffff;
-}
 
 /* Attachments Section */
 .attachments-section {

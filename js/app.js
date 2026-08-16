@@ -141,7 +141,6 @@ class MsgViewerApp {
       emailCcRow: document.getElementById("emailCcRow"),
       emailCc: document.getElementById("emailCc"),
       emailPath: document.getElementById("emailPath"),
-      btnOpenPathFolder: document.getElementById("btnOpenPathFolder"),
       emailDate: document.getElementById("emailDate"),
 
       // View Controls & Content
@@ -396,12 +395,6 @@ class MsgViewerApp {
       );
     }
 
-    // Open Folder Location button
-    if (this.elements.btnOpenPathFolder) {
-      this.elements.btnOpenPathFolder.addEventListener("click", () =>
-        this.openFileLocation(),
-      );
-    }
   }
 
   initSidebarResizer() {
@@ -984,70 +977,6 @@ class MsgViewerApp {
     }
   }
 
-  async openFileLocation(msg) {
-    if (!msg) {
-      msg = this.messages[this.currentMsgIndex];
-    }
-    if (!msg) return;
-
-    const path = msg.filePath || msg.fileName || "";
-    const btn = this.elements.btnOpenPathFolder;
-    const originalHtml = btn ? btn.innerHTML : "";
-
-    try {
-      const response = await fetch(`${API_BASE}/api/open-folder`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: path }),
-      });
-
-      if (response.ok) {
-        const resData = await response.json();
-        if (resData.success) {
-          if (resData.opened && msg.filePath !== resData.opened) {
-            msg.filePath = resData.opened;
-            if (this.elements.emailPath) {
-              this.elements.emailPath.textContent = resData.opened;
-              this.elements.emailPath.title = resData.opened;
-            }
-          }
-          if (btn) {
-            btn.classList.add("btn-success");
-            btn.innerHTML = `
-              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-              </svg>
-              <span>Opened</span>
-            `;
-            setTimeout(() => {
-              btn.classList.remove("btn-success");
-              btn.innerHTML = originalHtml;
-            }, 2000);
-          }
-          return;
-        }
-      }
-    } catch (err) {
-      console.warn("Backend server not available for opening folder:", err);
-    }
-
-    if (navigator.clipboard && path) {
-      try {
-        await navigator.clipboard.writeText(path);
-        if (btn) {
-          btn.innerHTML = `
-            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
-            </svg>
-            <span>Copied</span>
-          `;
-          setTimeout(() => {
-            btn.innerHTML = originalHtml;
-          }, 2000);
-        }
-      } catch (clipErr) {}
-    }
-  }
 
   async deleteCurrentMsgFile() {
     if (
