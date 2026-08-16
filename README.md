@@ -20,9 +20,9 @@
   - **Multi-language Support** (English, Spanish, French, and Portuguese with live switching).
   - **Drag & Drop** file opening support.
 - **💻 Zero-Admin Windows Integration**:
+  - **1-Click Desktop Shortcut**: Create a desktop icon directly from the UI or PowerShell.
   - Run standalone in native Edge App Mode (`--app`).
   - Silent launcher script to hide terminal windows.
-  - Non-administrator PowerShell script for registering `.msg` file associations.
 
 ---
 
@@ -64,19 +64,22 @@ cd msg-viewer
 
 ---
 
-## 🔗 Registering File Association (Windows)
+## 🔗 Windows Integration (Desktop Shortcut)
 
-To open `.msg` files directly by double-clicking them in Windows File Explorer **without requiring Administrator rights**:
+You can create a desktop shortcut in two ways:
 
-1. Open PowerShell.
-2. Navigate to the project directory and run:
+### Option 1: Directly from the Application UI (Recommended)
 
-   ```powershell
-   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-   .\Associate-MSG-extension.ps1
-   ```
+1. Open the application.
+2. Click the **About** icon (`ℹ️`) in the top navigation bar or the **Windows Integration** button on the welcome screen.
+3. Under the **Windows Integration** section, click **Create Desktop Shortcut**.
 
-3. Now all `.msg` files will automatically open in MSG Viewer.
+### Option 2: Using PowerShell Script
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\Create-Desktop-Shortcut.ps1
+```
 
 ---
 
@@ -89,7 +92,6 @@ msg-viewer/
 ├── favicon.ico                   # Multi-resolution application icon
 ├── Start-MSG-Viewer.cmd          # Windows batch launcher (starts server & opens app mode)
 ├── MSG-Viewer.vbs                # Silent VBScript launcher (hides command prompt)
-├── Associate-MSG-extension.ps1   # Windows non-admin registry file association script
 ├── css/                          # CSS stylesheets (design system, dark/light themes)
 ├── docs/                         # Documentation assets and icons (SVG, PNG, ICO)
 ├── js/                           # Client-side logic (UI, parsing fallback, i18n)

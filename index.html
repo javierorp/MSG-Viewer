@@ -9,12 +9,21 @@
       content="Free, offline, and secure .msg file viewer for Windows without administrator permissions required."
     />
     <meta name="theme-color" content="#2563eb" />
-    <link rel="icon" type="image/svg+xml" href="docs/images/msg-viewer-icon.svg" />
-    <link rel="icon" type="image/png" sizes="96x96" href="docs/images/msg-viewer-icon.png" />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="docs/images/msg-viewer-icon.svg"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="96x96"
+      href="docs/images/msg-viewer-icon.png"
+    />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="apple-touch-icon" href="docs/images/msg-viewer-icon.png" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="css/styles.css?v=3" />
+    <link rel="stylesheet" href="css/styles.css?v=6" />
     <script>
       // Prevent theme and UI zoom Flash of Unstyled Content (FOUC)
       (function () {
@@ -418,7 +427,7 @@
                 Click the buttons or drag email files (.msg) or entire folders
                 from your computer to open them instantly.
               </div>
-              <div style="display: flex; gap: 10px; margin-top: 8px">
+              <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; justify-content: center">
                 <button
                   id="btnExplore"
                   class="btn btn-primary"
@@ -432,6 +441,34 @@
                   data-i18n="openFolder"
                 >
                   Open Folder
+                </button>
+                <button
+                  id="btnQuickIntegration"
+                  class="btn btn-secondary"
+                  title="Windows Integration (Desktop Icon & File Association)"
+                  data-i18n-title="windowsIntegrationTitle"
+                >
+                  <svg
+                    width="15"
+                    height="15"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  <span data-i18n="windowsIntegrationTitle">Windows Integration</span>
                 </button>
               </div>
             </div>
@@ -659,7 +696,8 @@
                     />
                   </svg>
                   <span class="attachments-title-text"
-                    ><span data-i18n="attachmentsTitle">Attachments</span> (<span id="attachmentsCount">0</span>)</span
+                    ><span data-i18n="attachmentsTitle">Attachments</span>
+                    (<span id="attachmentsCount">0</span>)</span
                   >
                 </button>
                 <button
@@ -816,13 +854,37 @@
               </svg>
             </div>
             <div class="about-app-name">MSG Viewer</div>
-            <div class="about-app-version">v1.0.0</div>
+            <div class="about-app-version">v0.5.0</div>
           </div>
 
           <p class="about-desc" data-i18n="aboutDesc">
             Free, offline, and secure .msg file viewer for Windows without
             administrator permissions required.
           </p>
+
+          <!-- Windows System Integration Actions -->
+          <div class="about-integration-box">
+            <div class="about-integration-header">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+              </svg>
+              <span class="about-integration-title" data-i18n="windowsIntegrationTitle">Windows Integration</span>
+            </div>
+            <div class="about-integration-buttons">
+              <button
+                id="btnCreateDesktopShortcut"
+                class="btn btn-secondary btn-integration"
+                title="Create Desktop Shortcut"
+                data-i18n-title="createDesktopShortcut"
+              >
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span data-i18n="createDesktopShortcut">Create Desktop Shortcut</span>
+              </button>
+            </div>
+            <div id="integrationAlert" class="integration-alert" style="display: none;"></div>
+          </div>
 
           <div class="about-info-list">
             <div class="about-info-item">
@@ -974,6 +1036,6 @@
       </div>
     </div>
 
-    <script src="js/bundle.js?v=6"></script>
+    <script src="js/bundle.js?v=9"></script>
   </body>
 </html>

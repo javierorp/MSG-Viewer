@@ -13,13 +13,19 @@ import http.server
 import json
 import os
 import re
+import shutil
 import socketserver
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+import urllib.request
 from urllib.parse import parse_qs, quote, unquote, urlparse
 import webbrowser
+
+if sys.platform == 'win32':
+    import winreg
 
 try:
     import tkinter as tk
@@ -127,12 +133,18 @@ else:
     _customize_window_taskbar = lambda *args, **kwargs: None  # type: ignore
 
 # Safe stdout/stderr redirection for pythonw (GUI mode without console)
-if sys.stdout is None:
-    # pylint: disable=consider-using-with
-    sys.stdout = open(os.devnull, 'w', encoding='utf-8')
-if sys.stderr is None:
-    # pylint: disable=consider-using-with
-    sys.stderr = open(os.devnull, 'w', encoding='utf-8')
+class NullWriter:
+    """Safe no-op writer for GUI/pythonw mode."""
+    def write(self, s):
+        pass
+
+    def flush(self):
+        pass
+
+if sys.stdout is None or not hasattr(sys.stdout, 'write'):
+    sys.stdout = NullWriter()
+if sys.stderr is None or not hasattr(sys.stderr, 'write'):
+    sys.stderr = NullWriter()
 
 PORT = 8080
 if getattr(sys, 'frozen', False):
@@ -287,6 +299,189 @@ def delete_file_on_disk(target_path, file_size=None):
         return False, f"Permission denied while deleting: {resolved_path}"
     except OSError as e:
         return False, f"Error deleting file: {str(e)}"
+
+
+def ensure_app_executable():
+    """Ensure MSG-Viewer.exe exists in project root. If missing, copy from dist or compile native launcher."""
+    if sys.platform != 'win32':
+        return None
+
+    if getattr(sys, 'frozen', False):
+        return os.path.abspath(sys.executable)
+
+    app_dir = os.path.abspath(DIRECTORY)
+    root_exe = os.path.join(app_dir, "MSG-Viewer.exe")
+    dist_exe = os.path.join(app_dir, "dist", "MSG-Viewer.exe")
+    icon_file = os.path.join(app_dir, "docs", "images", "msg-viewer-icon.ico")
+    if not os.path.exists(icon_file):
+        icon_file = os.path.join(app_dir, "favicon.ico")
+
+    if os.path.exists(root_exe):
+        return root_exe
+
+    if os.path.exists(dist_exe):
+        try:
+            shutil.copy2(dist_exe, root_exe)
+            return root_exe
+        except Exception:
+            return dist_exe
+
+    # If neither exists, compile an instant native launcher with csc.exe
+    csc_paths = [
+        r"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe",
+        r"C:\Windows\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+    ]
+    csc_exe = next((p for p in csc_paths if os.path.exists(p)), None)
+    if not csc_exe:
+        return None
+
+    cs_source = r"""
+using System;
+using System.Diagnostics;
+using System.IO;
+
+namespace MSGViewerLauncher
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string vbsPath = Path.Combine(baseDir, "MSG-Viewer.vbs");
+            string cmdPath = Path.Combine(baseDir, "Start-MSG-Viewer.cmd");
+            
+            string argStr = "";
+            if (args != null && args.Length > 0)
+            {
+                foreach (string arg in args)
+                {
+                    argStr += " \"" + arg.Replace("\"", "\\\"") + "\"";
+                }
+            }
+            
+            ProcessStartInfo psi;
+            if (File.Exists(vbsPath))
+            {
+                psi = new ProcessStartInfo("wscript.exe", "\"" + vbsPath + "\"" + argStr);
+            }
+            else
+            {
+                psi = new ProcessStartInfo("cmd.exe", "/c \"" + cmdPath + "\"" + argStr);
+            }
+            psi.WorkingDirectory = baseDir;
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = false;
+            try
+            {
+                Process.Start(psi);
+            }
+            catch {}
+        }
+    }
+}
+"""
+    try:
+        temp_cs = os.path.join(tempfile.gettempdir(), f"msg_launcher_{os.getpid()}.cs")
+        with open(temp_cs, "w", encoding="utf-8") as f:
+            f.write(cs_source)
+
+        cmd = [csc_exe, "/nologo", "/target:winexe", f"/out:{root_exe}"]
+        if os.path.exists(icon_file):
+            cmd.append(f"/win32icon:{icon_file}")
+        cmd.append(temp_cs)
+
+        creation_flags = 0x08000000 if sys.platform == 'win32' else 0
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+            creationflags=creation_flags
+        )
+        if os.path.exists(temp_cs):
+            os.remove(temp_cs)
+
+        if res.returncode == 0 and os.path.exists(root_exe):
+            return root_exe
+    except Exception:
+        pass
+
+    return None
+
+
+def create_desktop_shortcut():
+    """Create a Windows desktop shortcut for MSG Viewer."""
+    if sys.platform != 'win32':
+        return False, "Desktop shortcuts are only supported on Windows."
+
+    try:
+        app_dir = os.path.abspath(DIRECTORY)
+        vbs_file = os.path.join(app_dir, "MSG-Viewer.vbs")
+        cmd_file = os.path.join(app_dir, "Start-MSG-Viewer.cmd")
+        icon_file = os.path.join(app_dir, "docs", "images", "msg-viewer-icon.ico")
+        if not os.path.exists(icon_file):
+            icon_file = os.path.join(app_dir, "favicon.ico")
+
+        resolved_exe = ensure_app_executable()
+
+        if getattr(sys, 'frozen', False):
+            target_path = os.path.abspath(sys.executable)
+            target_cmd = target_path
+            args = ""
+            icon_location = f"{target_path},0"
+        elif resolved_exe and os.path.exists(resolved_exe):
+            target_cmd = os.path.abspath(resolved_exe)
+            args = ""
+            icon_location = f"{target_cmd},0"
+        elif os.path.exists(vbs_file):
+            target_cmd = "wscript.exe"
+            args = f'"{vbs_file}"'
+            icon_location = (
+                f"{os.path.abspath(icon_file)},0"
+                if os.path.exists(icon_file)
+                else f"{target_cmd},0"
+            )
+        else:
+            target_cmd = cmd_file
+            args = ""
+            icon_location = (
+                f"{os.path.abspath(icon_file)},0"
+                if os.path.exists(icon_file)
+                else f"{target_cmd},0"
+            )
+
+        ps_code = f'''
+$WshShell = New-Object -ComObject WScript.Shell
+$DesktopPath = [System.Environment]::GetFolderPath('Desktop')
+$ShortcutPath = Join-Path $DesktopPath "MSG Viewer.lnk"
+$Shortcut = $WshShell.CreateShortcut($ShortcutPath)
+$Shortcut.TargetPath = "{target_cmd.replace('"', '`"')}"
+$Shortcut.Arguments = '{args}'
+$Shortcut.WorkingDirectory = "{app_dir.replace('"', '`"')}"
+$Shortcut.Description = "MSG Viewer - Offline .msg File Viewer"
+$Shortcut.IconLocation = "{icon_location.replace('"', '`"')}"
+$Shortcut.Save()
+'''
+        creation_flags = 0x08000000 if sys.platform == 'win32' else 0
+        res = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_code],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+            creationflags=creation_flags
+        )
+        if res.returncode == 0:
+            return True, "Shortcut created successfully on Desktop."
+        return False, res.stderr.strip() or "Failed to create shortcut."
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        return False, str(e)
+
+
+
+
 
 
 def pick_files_native():
@@ -765,14 +960,15 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):  # pylint: disable=invalid-name
-        """Handle POST requests for file uploads and native dialogs."""
+        """Handle POST requests for file uploads, native dialogs and system integration."""
         parsed_url = urlparse(self.path)
         handlers = {
             '/api/pick-files': self.handle_pick_files,
             '/api/pick-folder': self.handle_pick_folder,
             '/api/parse': self.handle_parse,
             '/api/open-folder': self.handle_open_folder,
-            '/api/delete-file': self.handle_delete_file
+            '/api/delete-file': self.handle_delete_file,
+            '/api/create-shortcut': self.handle_create_shortcut
         }
         handler = handlers.get(parsed_url.path)
         if handler:
@@ -854,6 +1050,14 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
                 )
         except Exception as e:  # pylint: disable=broad-exception-caught
             self.send_json({"error": str(e)}, status=500)
+
+    def handle_create_shortcut(self):
+        """Handle request to create desktop shortcut."""
+        success, msg = create_desktop_shortcut()
+        if success:
+            self.send_json({"success": True, "message": msg})
+        else:
+            self.send_json({"success": False, "error": msg}, status=500)
 
     def handle_pick_files(self):
         """Handle native file picker request and return parsed messages."""
@@ -993,23 +1197,49 @@ def run_server():
         if len(sys.argv) > 1 and not sys.argv[1].startswith('-')
         else None
     )
+
+    # Check if a server instance is already running
+    server_already_running = False
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{PORT}/api/health")
+        with urllib.request.urlopen(req, timeout=0.5) as resp:
+            if resp.status == 200:
+                server_already_running = True
+    except Exception:
+        server_already_running = False
+
+    if server_already_running:
+        launch_app_window(file_arg)
+        time.sleep(1.0)
+        sys.exit(0)
+
     if getattr(sys, 'frozen', False):
         threading.Thread(
             target=launch_app_window,
             args=(file_arg,),
             daemon=True
         ).start()
-    try:
-        with ReusableTCPServer(("127.0.0.1", PORT), MsgHandler) as httpd:
+
+    httpd = None
+    for attempt in range(5):
+        try:
+            httpd = ReusableTCPServer(("127.0.0.1", PORT), MsgHandler)
+            break
+        except OSError:
+            if attempt < 4:
+                time.sleep(0.3)
+            else:
+                if file_arg:
+                    launch_app_window(file_arg)
+                sys.exit(0)
+
+    if httpd:
+        with httpd:
             print(
                 f"MSG Viewer server started at http://127.0.0.1:{PORT}",
                 flush=True
             )
             httpd.serve_forever()
-    except OSError:
-        if file_arg:
-            launch_app_window(file_arg)
-        sys.exit(0)
 
 
 if __name__ == '__main__':

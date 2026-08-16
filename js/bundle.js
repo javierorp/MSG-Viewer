@@ -86,6 +86,12 @@
       expandAttachments: "Expandir adjuntos",
       toggleHeaderTitle: "Colapsar o expandir cabecera",
       toggleAttachmentsTitle: "Colapsar o expandir adjuntos",
+      windowsIntegrationTitle: "Integración con Windows",
+      createDesktopShortcut: "Crear icono en el Escritorio",
+      createDesktopShortcutSuccess:
+        "¡Acceso directo creado correctamente en el Escritorio!",
+      integrationError: "Error al realizar la operación: ",
+      processing: "Procesando...",
     },
     en: {
       appTitle: "MSG Viewer",
@@ -155,6 +161,11 @@
       expandAttachments: "Expand attachments",
       toggleHeaderTitle: "Collapse or expand header",
       toggleAttachmentsTitle: "Collapse or expand attachments",
+      windowsIntegrationTitle: "Windows Integration",
+      createDesktopShortcut: "Create Desktop Shortcut",
+      createDesktopShortcutSuccess: "Desktop shortcut created successfully!",
+      integrationError: "Error performing operation: ",
+      processing: "Processing...",
     },
     fr: {
       appTitle: "MSG Viewer",
@@ -229,6 +240,12 @@
       expandAttachments: "Développer les pièces jointes",
       toggleHeaderTitle: "Réduire ou développer l'en-tête",
       toggleAttachmentsTitle: "Réduire ou développer les pièces jointes",
+      windowsIntegrationTitle: "Intégration Windows",
+      createDesktopShortcut: "Créer un raccourci sur le Bureau",
+      createDesktopShortcutSuccess:
+        "Raccourci sur le Bureau créé avec succès !",
+      integrationError: "Erreur lors de l'opération : ",
+      processing: "Traitement en cours...",
     },
     pt: {
       appTitle: "MSG Viewer",
@@ -303,6 +320,12 @@
       expandAttachments: "Expandir anexos",
       toggleHeaderTitle: "Recolher ou expandir cabeçalho",
       toggleAttachmentsTitle: "Recolher ou expandir anexos",
+      windowsIntegrationTitle: "Integração com o Windows",
+      createDesktopShortcut: "Criar atalho na Área de Trabalho",
+      createDesktopShortcutSuccess:
+        "Atalho na Área de Trabalho criado com sucesso!",
+      integrationError: "Erro ao realizar a operação: ",
+      processing: "Processando...",
     },
   };
 
@@ -1696,6 +1719,11 @@
 
         aboutModal: document.getElementById("aboutModal"),
         aboutModalBtnClose: document.getElementById("aboutModalBtnClose"),
+        btnQuickIntegration: document.getElementById("btnQuickIntegration"),
+        btnCreateDesktopShortcut: document.getElementById(
+          "btnCreateDesktopShortcut",
+        ),
+        integrationAlert: document.getElementById("integrationAlert"),
 
         confirmModal: document.getElementById("confirmModal"),
         confirmModalTitle: document.getElementById("confirmModalTitle"),
@@ -1990,6 +2018,17 @@
         });
       }
 
+      if (this.elements.btnQuickIntegration) {
+        this.elements.btnQuickIntegration.addEventListener("click", () => {
+          this.openAboutModal();
+        });
+      }
+
+      if (this.elements.btnCreateDesktopShortcut) {
+        this.elements.btnCreateDesktopShortcut.addEventListener("click", () =>
+          this.createDesktopShortcut(),
+        );
+      }
 
       window.addEventListener("keydown", (e) => {
         if (e.key === "Escape") {
@@ -1999,7 +2038,68 @@
       });
     }
 
+    showIntegrationAlert(type, message) {
+      if (!this.elements.integrationAlert) return;
+      this.elements.integrationAlert.className = type
+        ? `integration-alert ${type}`
+        : "integration-alert";
+      this.elements.integrationAlert.textContent = message;
+      this.elements.integrationAlert.style.display = "block";
+    }
+
+    async createDesktopShortcut() {
+      const btn = this.elements.btnCreateDesktopShortcut;
+      const dict = translations[this.currentLang] || translations.en;
+      if (btn) btn.disabled = true;
+      this.showIntegrationAlert("", dict.processing || "Processing...");
+
+      try {
+        const response = await fetch(`${API_BASE}/api/create-shortcut`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const rawText = await response.text();
+        let result = {};
+        try {
+          result = JSON.parse(rawText);
+        } catch (jsonErr) {
+          result = {
+            error:
+              response.status === 404
+                ? "API endpoint not found. Please restart the application."
+                : `Server returned status ${response.status}`,
+          };
+        }
+
+        if (response.ok && result.success) {
+          this.showIntegrationAlert(
+            "success",
+            dict.createDesktopShortcutSuccess ||
+              "Shortcut created successfully on Desktop!",
+          );
+        } else {
+          this.showIntegrationAlert(
+            "error",
+            (dict.integrationError || "Error: ") +
+              (result.error || result.message || "Failed"),
+          );
+        }
+      } catch (err) {
+        this.showIntegrationAlert(
+          "error",
+          (dict.integrationError || "Error: ") + (err.message || String(err)),
+        );
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+
+
     openAboutModal() {
+      if (this.elements.integrationAlert) {
+        this.elements.integrationAlert.style.display = "none";
+        this.elements.integrationAlert.textContent = "";
+      }
       if (this.elements.aboutModal) {
         this.elements.aboutModal.classList.add("active");
       }
