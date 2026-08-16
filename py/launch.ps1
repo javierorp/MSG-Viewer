@@ -1,5 +1,5 @@
 # Startup and health check script for the MSG Viewer Python server
-$port = 8080
+$port = 48721
 $ready = $false
 
 try {

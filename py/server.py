@@ -146,7 +146,7 @@ if sys.stdout is None or not hasattr(sys.stdout, 'write'):
 if sys.stderr is None or not hasattr(sys.stderr, 'write'):
     sys.stderr = NullWriter()
 
-PORT = 8080
+PORT = 48721
 if getattr(sys, 'frozen', False):
     DIRECTORY = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
 else:

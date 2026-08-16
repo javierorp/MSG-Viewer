@@ -9,7 +9,7 @@
 (function () {
   const API_BASE = window.location.protocol.startsWith("http")
     ? ""
-    : "http://127.0.0.1:8080";
+    : "http://127.0.0.1:48721";
 
   // 1. i18n Dictionary Map
   const translations = {

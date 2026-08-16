@@ -30,12 +30,53 @@
 
 MSG Viewer operates as a dual-layer application:
 
-1. **Frontend**: Standalone web interface built with HTML5, CSS3, and JavaScript, styled with modern UI design patterns.
-2. **Backend**: Lightweight local Python REST API server using the `extract-msg` library to parse OLE/MSG binary formats smoothly.
+1. **Frontend**: Standalone web interface built with HTML5, CSS3, and JavaScript, running inside Microsoft Edge in App Mode (`--app`) or standard modern browsers.
+2. **Backend**: Lightweight local Python HTTP/REST API server listening on `127.0.0.1:48721`, using the `extract-msg` library to parse OLE/MSG binary formats directly from the file system or memory.
 
 ```text
-[ .msg File ] ──► [ Local Python Server (127.0.0.1:8080) ] ──► [ MSG Viewer App (Edge/Browser UI) ]
+[ .msg File ] ──► [ Local Python Server (127.0.0.1:48721) ] ──► [ MSG Viewer App (Edge/Browser UI) ]
 ```
+
+---
+
+## 📡 Port & Data Exchange (Frontend ⟷ Backend)
+
+### Dedicated Network Port: `48721`
+The local server binds strictly to loopback address **`127.0.0.1:48721`**.
+- **Conflict Prevention**: Standard ports like `8080`, `8000`, `3000`, or `5000` are frequently occupied by web servers (Tomcat, Spring Boot, IIS), developer tools, or Docker containers. Port `48721` resides in the unassigned private range, preventing port collision issues.
+- **Local Isolation**: The socket is bound exclusively to `127.0.0.1` (localhost), meaning it is completely unreachable from outside the machine or local area network.
+
+### Information Exchange Flow
+
+The application features a **Dual-Engine** communication model:
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                        MSG Viewer Frontend (UI)                        │
+│                (Edge App / JavaScript / DOM Sanitizer)                 │
+└───────────────────▲────────────────────────────────▲───────────────────┘
+                    │                                │
+       HTTP Fetch   │ (JSON Response)                │ (Pure JS Fallback)
+       REST API     │ Metadata, HTML, Attachments    │ If Python offline
+                    │                                │
+┌───────────────────▼────────────────────────────────▼───────────────────┐
+│                     Local Python Server (48721)                        │
+│                 (extract-msg / PowerShell Dialogs)                     │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Server-Assisted Processing (Primary)**:
+   The frontend communicates asynchronously with the local Python server via the standard `Fetch API`.
+   - **`GET /api/health`**: Health-check endpoint used during startup to verify server readiness or detect existing instances before opening new windows.
+   - **`GET /api/load-file?path=<path>`**: Loads and extracts a `.msg` file directly from local disk. Python extracts headers, sender/recipient details, date/time, HTML/plain text bodies, and base64-encoded attachments, returning a structured JSON payload to the UI.
+   - **`POST /api/parse`**: Parses raw `.msg` binary buffers uploaded via drag-and-drop or file selection.
+   - **`GET/POST /api/pick-files` & `/api/pick-folder`**: Triggers native Windows file/folder selection dialogs through PowerShell, recursively scanning directories for `.msg` files and extracting metadata in batches.
+   - **`POST /api/open-folder`**: Opens Windows File Explorer highlighting the active `.msg` file location on disk.
+   - **`POST /api/delete-file`**: Safely removes the selected `.msg` file from disk upon user confirmation.
+   - **`POST /api/create-shortcut`**: Automatically generates a Windows Desktop shortcut with the custom application icon.
+
+2. **Client-Side Fallback (Secondary)**:
+   If the Python server is not reachable, the frontend seamlessly activates its embedded JavaScript OLE Compound File (CFBF) and LZFu decompressor engine, enabling 100% standalone offline operation directly within any browser window.
 
 ---
 
@@ -128,7 +169,7 @@ The resulting executable will be located in `dist/MSG-Viewer.exe`.
 ## 🔒 Security & Privacy
 
 - **No Remote Calls**: No telemetry, tracking scripts, or external dependencies.
-- **Localhost Binding**: The local backend server binds strictly to `127.0.0.1:8080` and is inaccessible from external networks.
+- **Localhost Binding**: The local backend server binds strictly to `127.0.0.1:48721` and is inaccessible from external networks.
 - **No Installation Needed**: Works cleanly out of local directories without installing system-wide drivers or background services.
 
 ---

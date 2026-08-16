@@ -3,7 +3,7 @@ import { sanitizeHtml, escapeHtml, resolveInlineImages, base64ToUint8Array } fro
 
 const API_BASE = window.location.protocol.startsWith("http")
   ? ""
-  : "http://127.0.0.1:8080";
+  : "http://127.0.0.1:48721";
 
 // Helper function to format sender display cleanly without duplicates
 function formatSenderDisplay(name, email, fallback = "Unknown") {
