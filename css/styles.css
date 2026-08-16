@@ -649,20 +649,77 @@ body.is-resizing iframe {
 
 .email-header-card {
   background: var(--bg-secondary);
-  padding: 24px 32px;
+  padding: 20px 32px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 14px;
   box-shadow: var(--shadow-sm);
+  transition: padding var(--transition-fast), gap var(--transition-fast);
+}
+
+.email-header-card.is-collapsed {
+  padding: 14px 32px 12px 32px;
+  gap: 10px;
+}
+
+.email-header-card.is-collapsed .email-meta-grid {
+  display: none;
+}
+
+.email-header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .email-subject {
   font-family: var(--font-heading);
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.3;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.header-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  margin-left: -6px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.header-collapse-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.header-collapse-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.header-collapse-btn .header-chevron-icon {
+  width: 16px;
+  height: 16px;
+  display: block;
+  transition: transform var(--transition-normal) ease;
+}
+
+.email-header-card.is-collapsed .header-collapse-btn .header-chevron-icon {
+  transform: rotate(-90deg);
 }
 
 .email-meta-grid {
@@ -751,26 +808,87 @@ body.is-resizing iframe {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 32px;
+  padding: 12px 32px;
   background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border-color);
   max-height: 220px;
   overflow-y: auto;
+  transition: padding var(--transition-fast), gap var(--transition-fast);
+}
+
+.attachments-section.is-collapsed {
+  padding: 8px 32px;
+  gap: 0;
+  max-height: none;
+  overflow-y: visible;
+}
+
+.attachments-section.is-collapsed .attachments-grid {
+  display: none;
 }
 
 .attachments-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
-.attachments-title {
-  display: flex;
+.attachments-title-btn {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  margin-left: -8px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-main);
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.attachments-title-btn:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.attachments-title-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.attachments-title-btn .section-chevron {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  display: block;
+  transition: transform var(--transition-normal) ease;
+}
+
+.attachments-section.is-collapsed .attachments-title-btn .section-chevron {
+  transform: rotate(-90deg);
+}
+
+.attachments-title-btn:hover .section-chevron {
+  color: var(--text-primary);
+}
+
+.attachments-title-btn .attachments-clip-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-primary);
+  flex-shrink: 0;
+  display: block;
+}
+
+.attachments-title-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .attachments-grid {
@@ -1337,7 +1455,7 @@ body.is-resizing iframe {
     background: transparent !important;
   }
 
-  .top-bar, .sidebar, .sidebar-resizer, .view-controls-bar, .view-tabs, .zoom-controls, .btn-print, .btn-delete-msg, .attachments-section, .btn, .search-box {
+  .top-bar, .sidebar, .sidebar-resizer, .view-controls-bar, .view-tabs, .zoom-controls, .btn-print, .btn-delete-msg, .attachments-section, .btn, .search-box, .header-collapse-btn {
     display: none !important;
   }
 
@@ -1351,6 +1469,10 @@ body.is-resizing iframe {
     margin: 0 !important;
     padding: 0 !important;
     zoom: 1 !important;
+  }
+
+  .email-header-card.is-collapsed .email-meta-grid {
+    display: grid !important;
   }
 
   .email-subject {

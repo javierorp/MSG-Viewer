@@ -84,6 +84,12 @@
       emailsCountPlural: "correos",
       modalConfirm: "Aceptar",
       modalCancel: "Cancelar",
+      collapseHeader: "Colapsar cabecera",
+      expandHeader: "Expandir cabecera",
+      collapseAttachments: "Colapsar adjuntos",
+      expandAttachments: "Expandir adjuntos",
+      toggleHeaderTitle: "Colapsar o expandir cabecera",
+      toggleAttachmentsTitle: "Colapsar o expandir adjuntos",
     },
     en: {
       appTitle: "MSG Viewer",
@@ -151,6 +157,12 @@
       emailsCountPlural: "emails",
       modalConfirm: "OK",
       modalCancel: "Cancel",
+      collapseHeader: "Collapse header",
+      expandHeader: "Expand header",
+      collapseAttachments: "Collapse attachments",
+      expandAttachments: "Expand attachments",
+      toggleHeaderTitle: "Collapse or expand header",
+      toggleAttachmentsTitle: "Collapse or expand attachments",
     },
   };
 
@@ -1071,6 +1083,12 @@
         this.uiZoom = 100;
       }
 
+      // Collapsible sections state (default false = expanded)
+      this.isHeaderCollapsed =
+        localStorage.getItem("msg_viewer_header_collapsed") === "true";
+      this.isAttachmentsCollapsed =
+        localStorage.getItem("msg_viewer_attachments_collapsed") === "true";
+
       this.storage = new MsgStorage();
 
       this.initDOMElements();
@@ -1080,6 +1098,8 @@
       this.applyLanguage(this.currentLang);
       this.applyFontZoom();
       this.applyUiZoom();
+      this.setHeaderCollapsed(this.isHeaderCollapsed, false);
+      this.setAttachmentsCollapsed(this.isAttachmentsCollapsed, false);
 
       this.initData();
     }
@@ -1155,6 +1175,8 @@
       });
 
       this.updateMessagesCountBadge();
+      this.setHeaderCollapsed(this.isHeaderCollapsed, false);
+      this.setAttachmentsCollapsed(this.isAttachmentsCollapsed, false);
 
       // Re-render message detail & list if currently viewing an email
       if (this.currentMsgIndex >= 0) {
@@ -1181,6 +1203,9 @@
         emptyState: document.getElementById("emptyState"),
         emailDetails: document.getElementById("emailDetails"),
 
+        emailHeaderCard: document.getElementById("emailHeaderCard"),
+        btnToggleHeader: document.getElementById("btnToggleHeader"),
+        emailMetaGrid: document.getElementById("emailMetaGrid"),
         emailSubject: document.getElementById("emailSubject"),
         emailSender: document.getElementById("emailSender"),
         emailTo: document.getElementById("emailTo"),
@@ -1202,6 +1227,7 @@
         uiZoomLevel: document.getElementById("uiZoomLevel"),
 
         attachmentsSection: document.getElementById("attachmentsSection"),
+        btnToggleAttachments: document.getElementById("btnToggleAttachments"),
         attachmentsCount: document.getElementById("attachmentsCount"),
         attachmentsGrid: document.getElementById("attachmentsGrid"),
         btnDownloadAll: document.getElementById("btnDownloadAll"),
@@ -1399,6 +1425,20 @@
         this.elements.btnUiZoomReset.addEventListener("click", () =>
           this.resetUiZoom(),
         );
+      }
+
+      if (this.elements.btnToggleHeader) {
+        this.elements.btnToggleHeader.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.setHeaderCollapsed(!this.isHeaderCollapsed);
+        });
+      }
+
+      if (this.elements.btnToggleAttachments) {
+        this.elements.btnToggleAttachments.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.setAttachmentsCollapsed(!this.isAttachmentsCollapsed);
+        });
       }
 
       window.addEventListener("keydown", (e) => {
@@ -2413,6 +2453,62 @@
         this.elements.uiZoomLevel.textContent = `${this.uiZoom}%`;
       }
       document.documentElement.style.zoom = String(this.uiZoom / 100);
+    }
+
+    setHeaderCollapsed(collapsed, save = true) {
+      this.isHeaderCollapsed = !!collapsed;
+      if (save) {
+        localStorage.setItem(
+          "msg_viewer_header_collapsed",
+          String(this.isHeaderCollapsed),
+        );
+      }
+      if (this.elements.emailHeaderCard) {
+        this.elements.emailHeaderCard.classList.toggle(
+          "is-collapsed",
+          this.isHeaderCollapsed,
+        );
+      }
+      if (this.elements.btnToggleHeader) {
+        this.elements.btnToggleHeader.setAttribute(
+          "aria-expanded",
+          String(!this.isHeaderCollapsed),
+        );
+        const titleKey = this.isHeaderCollapsed
+          ? "expandHeader"
+          : "collapseHeader";
+        const labelText = this.t(titleKey);
+        this.elements.btnToggleHeader.title = labelText;
+        this.elements.btnToggleHeader.setAttribute("aria-label", labelText);
+      }
+    }
+
+    setAttachmentsCollapsed(collapsed, save = true) {
+      this.isAttachmentsCollapsed = !!collapsed;
+      if (save) {
+        localStorage.setItem(
+          "msg_viewer_attachments_collapsed",
+          String(this.isAttachmentsCollapsed),
+        );
+      }
+      if (this.elements.attachmentsSection) {
+        this.elements.attachmentsSection.classList.toggle(
+          "is-collapsed",
+          this.isAttachmentsCollapsed,
+        );
+      }
+      if (this.elements.btnToggleAttachments) {
+        this.elements.btnToggleAttachments.setAttribute(
+          "aria-expanded",
+          String(!this.isAttachmentsCollapsed),
+        );
+        const titleKey = this.isAttachmentsCollapsed
+          ? "expandAttachments"
+          : "collapseAttachments";
+        const labelText = this.t(titleKey);
+        this.elements.btnToggleAttachments.title = labelText;
+        this.elements.btnToggleAttachments.setAttribute("aria-label", labelText);
+      }
     }
 
     previewAttachment(attachment) {

@@ -10,7 +10,7 @@
     />
     <meta name="theme-color" content="#2563eb" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/styles.css?v=3" />
     <script>
       // Prevent theme and UI zoom Flash of Unstyled Content (FOUC)
       (function () {
@@ -64,22 +64,14 @@
             data-i18n-title="reloadApp"
             aria-label="Recargar interfaz (F5 o Ctrl+F5)"
           >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path
                 d="M16.8 16.8A7 7 0 1 1 13 5.2"
                 stroke="currentColor"
                 stroke-width="2.3"
                 stroke-linecap="round"
               />
-              <polygon
-                points="12,11.5 18,11.5 18,5.5"
-                fill="currentColor"
-              />
+              <polygon points="12,11.5 18,11.5 18,5.5" fill="currentColor" />
             </svg>
           </button>
 
@@ -442,9 +434,37 @@
           <!-- Selected Email Content View -->
           <div id="emailDetails" class="email-details" style="display: none">
             <!-- Email Metadata Header Card -->
-            <div class="email-header-card">
-              <div class="email-subject" id="emailSubject">(No Subject)</div>
-              <div class="email-meta-grid">
+            <div id="emailHeaderCard" class="email-header-card">
+              <div class="email-header-top">
+                <button
+                  type="button"
+                  id="btnToggleHeader"
+                  class="header-collapse-btn"
+                  title="Colapsar cabecera"
+                  data-i18n-title="collapseHeader"
+                  aria-expanded="true"
+                  aria-controls="emailMetaGrid"
+                  aria-label="Colapsar cabecera"
+                >
+                  <svg
+                    class="header-chevron-icon"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                <div class="email-subject" id="emailSubject">(No Subject)</div>
+              </div>
+              <div class="email-meta-grid" id="emailMetaGrid">
                 <span class="meta-label" data-i18n="labelFrom">From:</span>
                 <span class="meta-value" id="emailSender"></span>
 
@@ -614,11 +634,35 @@
               class="attachments-section"
               style="display: none"
             >
-              <div class="attachments-header">
-                <div class="attachments-title">
+              <div class="attachments-header" id="attachmentsHeader">
+                <button
+                  type="button"
+                  id="btnToggleAttachments"
+                  class="attachments-title-btn"
+                  aria-expanded="true"
+                  aria-controls="attachmentsGrid"
+                  title="Colapsar adjuntos"
+                  data-i18n-title="collapseAttachments"
+                >
                   <svg
-                    width="18"
-                    height="18"
+                    class="section-chevron"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                  <svg
+                    class="attachments-clip-icon"
+                    width="16"
+                    height="16"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -628,17 +672,17 @@
                       stroke-linejoin="round"
                       stroke-width="2"
                       d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                    ></path>
+                    />
                   </svg>
-                  <span
-                    ><span data-i18n="attachmentsTitle">Attachments</span>
-                    (<span id="attachmentsCount">0</span>)</span
+                  <span class="attachments-title-text"
+                    ><span data-i18n="attachmentsTitle">Attachments</span> (<span id="attachmentsCount">0</span>)</span
                   >
-                </div>
+                </button>
                 <button
                   id="btnDownloadAll"
                   class="btn btn-secondary btn-xs"
                   title="Save all attachments"
+                  data-i18n-title="saveAll"
                 >
                   <svg
                     width="14"
@@ -830,7 +874,7 @@
                 >Contact:</span
               >
               <a
-                href="mailto:javierorp@proton.me?subject=%5BMSG-Viewer%5D"
+                href="mailto:javierorp@proton.me?subject=%5BMSG-Viewer%5D%20"
                 class="about-link"
               >
                 javierorp@proton.me
@@ -946,6 +990,6 @@
       </div>
     </div>
 
-    <script src="js/bundle.js"></script>
+    <script src="js/bundle.js?v=3"></script>
   </body>
 </html>

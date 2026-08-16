@@ -101,12 +101,20 @@ class MsgViewerApp {
       this.uiZoom = 100;
     }
 
+    // Collapsible sections state (default false = expanded)
+    this.isHeaderCollapsed =
+      localStorage.getItem("msg_viewer_header_collapsed") === "true";
+    this.isAttachmentsCollapsed =
+      localStorage.getItem("msg_viewer_attachments_collapsed") === "true";
+
     this.initDOMElements();
     this.initEventListeners();
     this.initSidebarResizer();
     this.initTheme();
     this.applyFontZoom();
     this.applyUiZoom();
+    this.setHeaderCollapsed(this.isHeaderCollapsed, false);
+    this.setAttachmentsCollapsed(this.isAttachmentsCollapsed, false);
     this.checkUrlParams();
   }
 
@@ -124,6 +132,9 @@ class MsgViewerApp {
       emailDetails: document.getElementById("emailDetails"),
 
       // Email Header Fields
+      emailHeaderCard: document.getElementById("emailHeaderCard"),
+      btnToggleHeader: document.getElementById("btnToggleHeader"),
+      emailMetaGrid: document.getElementById("emailMetaGrid"),
       emailSubject: document.getElementById("emailSubject"),
       emailSender: document.getElementById("emailSender"),
       emailTo: document.getElementById("emailTo"),
@@ -146,6 +157,8 @@ class MsgViewerApp {
       btnUiZoomReset: document.getElementById("btnUiZoomReset"),
       uiZoomLevel: document.getElementById("uiZoomLevel"),
 
+      attachmentsSection: document.getElementById("attachmentsSection"),
+      btnToggleAttachments: document.getElementById("btnToggleAttachments"),
       attachmentsBar: document.getElementById("attachmentsBar"),
       attachmentsList: document.getElementById("attachmentsList"),
       bodyWrapper: document.getElementById("bodyWrapper"),
@@ -302,6 +315,20 @@ class MsgViewerApp {
       this.elements.btnUiZoomReset.addEventListener("click", () =>
         this.resetUiZoom(),
       );
+    }
+
+    if (this.elements.btnToggleHeader) {
+      this.elements.btnToggleHeader.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.setHeaderCollapsed(!this.isHeaderCollapsed);
+      });
+    }
+
+    if (this.elements.btnToggleAttachments) {
+      this.elements.btnToggleAttachments.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.setAttachmentsCollapsed(!this.isAttachmentsCollapsed);
+      });
     }
 
     window.addEventListener("keydown", (e) => {
@@ -844,6 +871,60 @@ class MsgViewerApp {
       this.elements.uiZoomLevel.textContent = `${this.uiZoom}%`;
     }
     document.documentElement.style.zoom = String(this.uiZoom / 100);
+  }
+
+  setHeaderCollapsed(collapsed, save = true) {
+    this.isHeaderCollapsed = !!collapsed;
+    if (save) {
+      localStorage.setItem(
+        "msg_viewer_header_collapsed",
+        String(this.isHeaderCollapsed),
+      );
+    }
+    if (this.elements.emailHeaderCard) {
+      this.elements.emailHeaderCard.classList.toggle(
+        "is-collapsed",
+        this.isHeaderCollapsed,
+      );
+    }
+    if (this.elements.btnToggleHeader) {
+      this.elements.btnToggleHeader.setAttribute(
+        "aria-expanded",
+        String(!this.isHeaderCollapsed),
+      );
+      const titleKey = this.isHeaderCollapsed
+        ? "Expandir cabecera"
+        : "Colapsar cabecera";
+      this.elements.btnToggleHeader.title = titleKey;
+      this.elements.btnToggleHeader.setAttribute("aria-label", titleKey);
+    }
+  }
+
+  setAttachmentsCollapsed(collapsed, save = true) {
+    this.isAttachmentsCollapsed = !!collapsed;
+    if (save) {
+      localStorage.setItem(
+        "msg_viewer_attachments_collapsed",
+        String(this.isAttachmentsCollapsed),
+      );
+    }
+    if (this.elements.attachmentsSection) {
+      this.elements.attachmentsSection.classList.toggle(
+        "is-collapsed",
+        this.isAttachmentsCollapsed,
+      );
+    }
+    if (this.elements.btnToggleAttachments) {
+      this.elements.btnToggleAttachments.setAttribute(
+        "aria-expanded",
+        String(!this.isAttachmentsCollapsed),
+      );
+      const titleKey = this.isAttachmentsCollapsed
+        ? "Expandir adjuntos"
+        : "Colapsar adjuntos";
+      this.elements.btnToggleAttachments.title = titleKey;
+      this.elements.btnToggleAttachments.setAttribute("aria-label", titleKey);
+    }
   }
 
   downloadAttachment(attachment) {
