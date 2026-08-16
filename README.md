@@ -86,17 +86,40 @@ To open `.msg` files directly by double-clicking them in Windows File Explorer *
 msg-viewer/
 ├── index.html                    # Main application user interface
 ├── manifest.json                 # Web app manifest configuration
+├── favicon.ico                   # Multi-resolution application icon
 ├── Start-MSG-Viewer.cmd          # Windows batch launcher (starts server & opens app mode)
 ├── MSG-Viewer.vbs                # Silent VBScript launcher (hides command prompt)
 ├── Associate-MSG-extension.ps1   # Windows non-admin registry file association script
 ├── css/                          # CSS stylesheets (design system, dark/light themes)
+├── docs/                         # Documentation assets and icons (SVG, PNG, ICO)
 ├── js/                           # Client-side logic (UI, parsing fallback, i18n)
 ├── py/                           # Local Python server & backend scripts
 │   ├── server.py                 # HTTP REST API server (processes .msg via extract-msg)
 │   └── launch.ps1                # Background python server launcher
-└── scripts/                      # Code signing and utility scripts
+└── scripts/                      # Utility scripts
+    ├── Build-EXE.ps1             # Build standalone MSG-Viewer.exe using PyInstaller
+    ├── Create-Desktop-Shortcut.ps1 # Create Windows desktop shortcut with app icon
     └── Sign-Application.ps1      # Self-signing code certificate script
 ```
+
+---
+
+## 📦 Building Standalone Executable (.exe)
+
+To compile a standalone portable executable `dist/MSG-Viewer.exe` with the custom application icon embedded:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\scripts\Build-EXE.ps1
+```
+
+Or using PyInstaller directly:
+
+```powershell
+pyinstaller MSG-Viewer.spec --clean --noconfirm
+```
+
+The resulting executable will be located in `dist/MSG-Viewer.exe`.
 
 ---
 

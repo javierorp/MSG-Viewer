@@ -43,8 +43,88 @@ if sys.platform == 'win32':
             ("hNameMappings", wintypes.LPVOID),
             ("lpszProgressTitle", wintypes.LPCWSTR),
         ]
+
+    class GUID(ctypes.Structure):  # pylint: disable=too-few-public-methods
+        _fields_ = [
+            ('Data1', ctypes.c_ulong),
+            ('Data2', ctypes.c_ushort),
+            ('Data3', ctypes.c_ushort),
+            ('Data4', ctypes.c_ubyte * 8)
+        ]
+
+    class PROPERTYKEY(ctypes.Structure):  # pylint: disable=too-few-public-methods
+        _fields_ = [
+            ('fmtid', GUID),
+            ('pid', ctypes.c_ulong)
+        ]
+
+    class PROPVARIANT(ctypes.Structure):  # pylint: disable=too-few-public-methods
+        _fields_ = [
+            ('vt', ctypes.c_ushort),
+            ('wReserved1', ctypes.c_ushort),
+            ('wReserved2', ctypes.c_ushort),
+            ('wReserved3', ctypes.c_ushort),
+            ('pwszVal', ctypes.c_wchar_p)
+        ]
+
+    _PKEY_AppUserModel_ID = PROPERTYKEY(
+        GUID(0x9F4C2855, 0x9F79, 0x4B39, (ctypes.c_ubyte * 8)(0xA8, 0xD0, 0xE1, 0xD4, 0x2D, 0xE1, 0xD5, 0xF3)),
+        5
+    )
+    _PKEY_AppUserModel_RelaunchIconResource = PROPERTYKEY(
+        GUID(0x9F4C2855, 0x9F79, 0x4B39, (ctypes.c_ubyte * 8)(0xA8, 0xD0, 0xE1, 0xD4, 0x2D, 0xE1, 0xD5, 0xF3)),
+        2
+    )
+    _IID_IPropertyStore = GUID(
+        0x886d8eeb, 0x8cf2, 0x4446, (ctypes.c_ubyte * 8)(0x8d, 0x02, 0xcd, 0xba, 0x1d, 0xbd, 0xcf, 0x99)
+    )
+
+    def _customize_window_taskbar(hwnd, icon_path, app_id='MSGViewer.App'):
+        """Assign custom AppUserModelID and window icons to decouple from Edge taskbar group."""
+        try:
+            p_store = ctypes.c_void_p()
+            hr = ctypes.windll.shell32.SHGetPropertyStoreForWindow(
+                hwnd,
+                ctypes.byref(_IID_IPropertyStore),
+                ctypes.byref(p_store)
+            )
+            if hr == 0 and p_store:
+                vtable = ctypes.cast(p_store, ctypes.POINTER(ctypes.POINTER(ctypes.c_void_p))).contents
+                set_val_proto = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p, ctypes.POINTER(PROPERTYKEY), ctypes.POINTER(PROPVARIANT))
+                commit_proto = ctypes.WINFUNCTYPE(ctypes.HRESULT, ctypes.c_void_p)
+                release_proto = ctypes.WINFUNCTYPE(ctypes.c_ulong, ctypes.c_void_p)
+
+                set_value = set_val_proto(vtable[6])
+                commit = commit_proto(vtable[7])
+                release = release_proto(vtable[2])
+
+                pv = PROPVARIANT()
+                pv.vt = 31  # VT_LPWSTR
+                pv.pwszVal = app_id
+                set_value(p_store, ctypes.byref(_PKEY_AppUserModel_ID), ctypes.byref(pv))
+
+                if icon_path and os.path.exists(icon_path):
+                    pv_icon = PROPVARIANT()
+                    pv_icon.vt = 31
+                    pv_icon.pwszVal = f"{os.path.abspath(icon_path)},0"
+                    set_value(p_store, ctypes.byref(_PKEY_AppUserModel_RelaunchIconResource), ctypes.byref(pv_icon))
+
+                commit(p_store)
+                release(p_store)
+
+            if icon_path and os.path.exists(icon_path):
+                abs_icon = os.path.abspath(icon_path)
+                h_big = ctypes.windll.user32.LoadImageW(None, abs_icon, 1, 48, 48, 0x10)
+                h_small = ctypes.windll.user32.LoadImageW(None, abs_icon, 1, 16, 16, 0x10)
+                if h_big:
+                    ctypes.windll.user32.SendMessageW(hwnd, 0x0080, 1, h_big)
+                if h_small:
+                    ctypes.windll.user32.SendMessageW(hwnd, 0x0080, 0, h_small)
+        except Exception:  # pylint: disable=broad-exception-caught
+            pass
 else:
     SHFILEOPSTRUCTW = None  # type: ignore
+    _customize_window_taskbar = lambda *args, **kwargs: None  # type: ignore
 
 # Safe stdout/stderr redirection for pythonw (GUI mode without console)
 if sys.stdout is None:
@@ -837,12 +917,52 @@ class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
 
+def _hook_window_taskbar_icon():
+    """Poll for the MSG Viewer window and assign custom AppID & icon to taskbar."""
+    if sys.platform != 'win32':
+        return
+    icon_file = os.path.join(DIRECTORY, 'docs', 'images', 'msg-viewer-icon.ico')
+    if not os.path.exists(icon_file):
+        icon_file = os.path.join(DIRECTORY, 'favicon.ico')
+    if not os.path.exists(icon_file):
+        return
+
+    abs_icon = os.path.abspath(icon_file)
+    for _ in range(30):
+        time.sleep(0.3)
+        found = []
+
+        def enum_cb(hwnd, _):
+            if ctypes.windll.user32.IsWindowVisible(hwnd):
+                length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+                if length > 0:
+                    buff = ctypes.create_unicode_buffer(length + 1)
+                    ctypes.windll.user32.GetWindowTextW(hwnd, buff, length + 1)
+                    if 'MSG Viewer' in buff.value:
+                        found.append(hwnd)
+            return True
+
+        cb_proto = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+        ctypes.windll.user32.EnumWindows(cb_proto(enum_cb), 0)
+        if found:
+            for h in found:
+                _customize_window_taskbar(h, abs_icon)
+            break
+
+
 def launch_app_window(file_param=None):
     """Launch Microsoft Edge in app mode or default web browser."""
     time.sleep(0.6)
     url = f"http://127.0.0.1:{PORT}"
     if file_param:
         url += f"?file={quote(file_param)}"
+
+    user_data_dir = os.path.join(
+        os.environ.get('LOCALAPPDATA', os.path.expanduser('~')),
+        'MSGViewer',
+        'Profile'
+    )
+
     edge_paths = [
         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"
@@ -850,7 +970,17 @@ def launch_app_window(file_param=None):
     for ep in edge_paths:
         if os.path.exists(ep):
             # pylint: disable=consider-using-with
-            subprocess.Popen([ep, f"--app={url}"])
+            subprocess.Popen([
+                ep,
+                f"--app={url}",
+                f"--user-data-dir={user_data_dir}",
+                "--no-first-run",
+                "--no-default-browser-check"
+            ])
+            threading.Thread(
+                target=_hook_window_taskbar_icon,
+                daemon=True
+            ).start()
             return
     webbrowser.open(url)
 

@@ -8,8 +8,18 @@
   "theme_color": "#2563eb",
   "icons": [
     {
+      "src": "docs/images/msg-viewer-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "docs/images/msg-viewer-icon.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
       "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
+      "sizes": "16x16 24x24 32x32 48x48 64x64 96x96 128x128 256x256",
       "type": "image/x-icon"
     }
   ],
