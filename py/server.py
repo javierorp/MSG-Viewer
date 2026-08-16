@@ -12,6 +12,7 @@ import email.utils
 import http.server
 import json
 import os
+import re
 import socketserver
 import subprocess
 import sys
@@ -249,8 +250,54 @@ def pick_folder_native():
         return ""
 
 
+def _detect_mime_type(att_name, att_data, default_mime=""):
+    """Detect accurate MIME type from filename extension or magic bytes."""
+    if default_mime and default_mime != "application/octet-stream":
+        return default_mime
+
+    ext = att_name.split('.')[-1].lower() if '.' in att_name else ""
+    mime_map = {
+        "png": "image/png",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "gif": "image/gif",
+        "webp": "image/webp",
+        "svg": "image/svg+xml",
+        "bmp": "image/bmp",
+        "ico": "image/x-icon",
+        "tif": "image/tiff",
+        "tiff": "image/tiff",
+        "pdf": "application/pdf",
+        "txt": "text/plain",
+        "log": "text/plain",
+        "csv": "text/csv",
+        "json": "application/json",
+        "xml": "application/xml",
+        "html": "text/html",
+        "htm": "text/html"
+    }
+    if ext in mime_map:
+        return mime_map[ext]
+
+    if att_data:
+        if att_data.startswith(b'\x89PNG\r\n\x1a\n'):
+            return 'image/png'
+        if att_data.startswith(b'\xff\xd8\xff'):
+            return 'image/jpeg'
+        if att_data.startswith(b'GIF87a') or att_data.startswith(b'GIF89a'):
+            return 'image/gif'
+        if att_data.startswith(b'RIFF') and len(att_data) > 12 and att_data[8:12] == b'WEBP':
+            return 'image/webp'
+        if att_data.startswith(b'BM'):
+            return 'image/bmp'
+        if b'<svg' in att_data[:300].lower():
+            return 'image/svg+xml'
+
+    return default_mime or 'application/octet-stream'
+
+
 def _extract_attachments(msg):
-    """Extract attachments from MSG into serializable dictionary format."""
+    """Extract attachments from MSG into serializable dictionary format with Content-ID."""
     attachments_list = []
     attachments = getattr(msg, 'attachments', []) or []
     for att in attachments:
@@ -258,6 +305,7 @@ def _extract_attachments(msg):
             att_name = (
                 getattr(att, 'longFilename', None)
                 or getattr(att, 'shortFilename', None)
+                or getattr(att, 'displayName', None)
                 or "attachment.bin"
             )
             att_data = getattr(att, 'data', b'') or b''
@@ -267,11 +315,33 @@ def _extract_attachments(msg):
             )
             ext = att_name.split('.')[-1].lower() if '.' in att_name else ""
 
+            # Extract Content-ID / CID for inline attachments
+            cid = getattr(att, 'cid', None) or getattr(att, 'contentId', None) or ""
+            if not cid and hasattr(att, 'props'):
+                try:
+                    cid = att.props.get('3712001F') or att.props.get('3712001E') or ""
+                except Exception:
+                    pass
+            cid_str = str(cid).strip(' \t\r\n\0') if cid else ""
+
+            # Extract Content-Location
+            loc = ""
+            if hasattr(att, 'props'):
+                try:
+                    loc = att.props.get('3713001F') or att.props.get('3713001E') or ""
+                except Exception:
+                    pass
+            loc_str = str(loc).strip(' \t\r\n\0') if loc else ""
+
+            raw_mime = getattr(att, 'mimetype', '') or ''
+            mime_type = _detect_mime_type(att_name, att_data, raw_mime)
+
             attachments_list.append({
                 "fileName": att_name,
-                "mimeType": getattr(
-                    att, 'mimetype', 'application/octet-stream'
-                ),
+                "contentId": cid_str,
+                "cid": cid_str,
+                "contentLocation": loc_str,
+                "mimeType": mime_type,
                 "size": len(att_data),
                 "extension": ext,
                 "base64Content": b64_content
@@ -279,6 +349,138 @@ def _extract_attachments(msg):
         except Exception:  # pylint: disable=broad-exception-caught
             pass
     return attachments_list
+
+
+def _resolve_inline_images(html_content, attachments):
+    """Replace cid: references, relative filenames, CSS url() and VML tags with base64 data URIs."""
+    if not html_content or not attachments:
+        return html_content
+
+    cid_map = {}
+    file_map = {}
+
+    for att in attachments:
+        b64 = att.get('base64Content')
+        if not b64:
+            continue
+        mime = att.get('mimeType') or 'image/png'
+        data_uri = f"data:{mime};base64,{b64}"
+
+        def register(key, target_map):
+            if not key:
+                return
+            k = str(key).strip(' \t\r\n\0')
+            if not k:
+                return
+            target_map[k.lower()] = data_uri
+            unbracketed = k.strip('<>').strip()
+            if unbracketed:
+                target_map[unbracketed.lower()] = data_uri
+                try:
+                    target_map[unquote(unbracketed).lower()] = data_uri
+                except Exception:
+                    pass
+            try:
+                target_map[unquote(k).lower()] = data_uri
+            except Exception:
+                pass
+
+        if att.get('contentId'):
+            register(att['contentId'], cid_map)
+        if att.get('cid'):
+            register(att['cid'], cid_map)
+        if att.get('contentLocation'):
+            register(att['contentLocation'], file_map)
+        if att.get('fileName'):
+            register(att['fileName'], file_map)
+            register(att['fileName'], cid_map)
+        if att.get('longFilename'):
+            register(att['longFilename'], file_map)
+            register(att['longFilename'], cid_map)
+        if att.get('shortFilename'):
+            register(att['shortFilename'], file_map)
+            register(att['shortFilename'], cid_map)
+
+    if not cid_map and not file_map:
+        return html_content
+
+    def _replace_src(match):
+        prefix = match.group(1)
+        quote_char = match.group(2)
+        val = match.group(3).strip()
+        val_clean = val.strip('<>').strip()
+
+        if val_clean.lower().startswith('cid:'):
+            cid_key = val_clean[4:].strip(' \t\r\n\0<>').lower()
+            target = cid_map.get(cid_key)
+            if not target:
+                try:
+                    target = cid_map.get(unquote(cid_key).lower())
+                except Exception:
+                    pass
+            if not target:
+                target = file_map.get(cid_key)
+            if target:
+                return f'{prefix}{quote_char}{target}{quote_char}'
+        elif '://' not in val_clean and not val_clean.startswith(('data:', 'blob:', '//', 'mailto:')):
+            fn = os.path.basename(val_clean.replace('\\', '/')).lower()
+            target = file_map.get(fn) or cid_map.get(fn)
+            if not target:
+                try:
+                    target = file_map.get(unquote(fn).lower()) or cid_map.get(unquote(fn).lower())
+                except Exception:
+                    pass
+            if target:
+                return f'{prefix}{quote_char}{target}{quote_char}'
+
+        return match.group(0)
+
+    pattern_src = re.compile(r'(<[^>]+?\bsrc\s*=\s*)(["\'])(.*?)\2', re.IGNORECASE | re.DOTALL)
+    result = pattern_src.sub(_replace_src, html_content)
+
+    def _replace_css_url(match):
+        prefix = match.group(1)
+        val = match.group(3).strip().strip('<>').strip()
+        suffix = match.group(5)
+
+        cid_key = val
+        if cid_key.lower().startswith('cid:'):
+            cid_key = cid_key[4:].strip(' \t\r\n\0<>')
+        target = cid_map.get(cid_key.lower()) or file_map.get(cid_key.lower())
+        if not target:
+            try:
+                target = cid_map.get(unquote(cid_key).lower()) or file_map.get(unquote(cid_key).lower())
+            except Exception:
+                pass
+        if target:
+            return f'{prefix}"{target}"{suffix}'
+        return match.group(0)
+
+    pattern_css = re.compile(r'(url\s*\(\s*)(["\']?)((?:cid:)?.*?)(["\']?)(\s*\))', re.IGNORECASE)
+    result = pattern_css.sub(_replace_css_url, result)
+
+    def _replace_vml_imagedata(match):
+        tag_str = match.group(0)
+        src_m = re.search(r'\bsrc\s*=\s*(["\'])(.*?)\1', tag_str, re.IGNORECASE)
+        alt_m = re.search(r'\bo:title\s*=\s*(["\'])(.*?)\1', tag_str, re.IGNORECASE)
+        alt_text = alt_m.group(2) if alt_m else "Image"
+
+        if src_m:
+            src_val = src_m.group(2).strip().strip('<>').strip()
+            if src_val.startswith('data:'):
+                img_tag = f'<img src="{src_val}" alt="{alt_text}" style="max-width:100%;height:auto;display:inline-block;" />'
+                return f'{tag_str}{img_tag}'
+            cid_key = src_val[4:].strip('<>') if src_val.lower().startswith('cid:') else src_val
+            target = cid_map.get(cid_key.lower()) or file_map.get(cid_key.lower())
+            if target:
+                img_tag = f'<img src="{target}" alt="{alt_text}" style="max-width:100%;height:auto;display:inline-block;" />'
+                return f'{tag_str}{img_tag}'
+        return tag_str
+
+    pattern_vml = re.compile(r'<v:imagedata\b[^>]*?/?>', re.IGNORECASE)
+    result = pattern_vml.sub(_replace_vml_imagedata, result)
+
+    return result
 
 
 def _extract_body_html(msg):
@@ -367,6 +569,10 @@ def _extract_sender(msg):
 def extract_msg_data(msg, file_path=None):
     """Helper to convert extract_msg.Message to JSON-serializable dict."""
     sender_name, sender_email = _extract_sender(msg)
+    attachments = _extract_attachments(msg)
+    raw_html = _extract_body_html(msg)
+    resolved_html = _resolve_inline_images(raw_html, attachments) if raw_html else ""
+
     response_data = {
         "subject": getattr(msg, 'subject', None) or "(No Subject)",
         "senderName": sender_name,
@@ -374,9 +580,9 @@ def extract_msg_data(msg, file_path=None):
         "displayTo": getattr(msg, 'to', None) or "",
         "displayCc": getattr(msg, 'cc', None) or "",
         "bodyText": getattr(msg, 'body', None) or "",
-        "bodyHtml": _extract_body_html(msg),
+        "bodyHtml": resolved_html,
         "date": _extract_date(msg),
-        "attachments": _extract_attachments(msg)
+        "attachments": attachments
     }
 
     if file_path:

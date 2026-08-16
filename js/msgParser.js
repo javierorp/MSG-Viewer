@@ -1,7 +1,4 @@
-/**
- * Client-Side OLE CFBF (Compound File Binary Format) Parser for Outlook .msg Files
- * Parses Microsoft Outlook .msg binary files natively in pure JavaScript (ArrayBuffer).
- */
+import { resolveInlineImages, uint8ArrayToBase64 } from "./sanitizer.js";
 
 export class MsgParser {
   constructor(arrayBuffer) {
@@ -244,6 +241,8 @@ export class MsgParser {
     for (const [attachName, streams] of attachmentStreams.entries()) {
       let fileName = 'Attachment';
       let mimeType = 'application/octet-stream';
+      let contentId = '';
+      let contentLocation = '';
       let content = null;
 
       for (const stream of streams) {
@@ -255,19 +254,62 @@ export class MsgParser {
           fileName = this.decodeText(rawData, nameUpper.endsWith('001F'));
         } else if (nameUpper.includes('370E')) { // PR_ATTACH_MIME_TAG
           mimeType = this.decodeText(rawData, nameUpper.endsWith('001F'));
+        } else if (nameUpper.includes('3712')) { // PR_ATTACH_CONTENT_ID
+          contentId = this.decodeText(rawData, nameUpper.endsWith('001F'));
+        } else if (nameUpper.includes('3713')) { // PR_ATTACH_CONTENT_LOCATION
+          contentLocation = this.decodeText(rawData, nameUpper.endsWith('001F'));
+        } else if (nameUpper.includes('3001') && (!fileName || fileName === 'Attachment')) { // PR_DISPLAY_NAME
+          fileName = this.decodeText(rawData, nameUpper.endsWith('001F'));
         } else if (nameUpper.includes('3701')) { // PR_ATTACH_DATA_BIN
           content = rawData;
         }
       }
 
-      if (content) {
+      if (content && content.length > 0) {
+        const cleanFileName = fileName.replace(/\0/g, '').trim() || 'attachment.bin';
+        const cleanCid = contentId.replace(/\0/g, '').trim();
+        const cleanLoc = contentLocation.replace(/\0/g, '').trim();
+        const ext = cleanFileName.includes('.') ? cleanFileName.split('.').pop().toLowerCase() : '';
+
+        if (!mimeType || mimeType === 'application/octet-stream') {
+          const mimeMap = {
+            png: 'image/png',
+            jpg: 'image/jpeg',
+            jpeg: 'image/jpeg',
+            gif: 'image/gif',
+            webp: 'image/webp',
+            svg: 'image/svg+xml',
+            bmp: 'image/bmp',
+            ico: 'image/x-icon',
+            tif: 'image/tiff',
+            tiff: 'image/tiff',
+            pdf: 'application/pdf',
+            txt: 'text/plain'
+          };
+          if (mimeMap[ext]) {
+            mimeType = mimeMap[ext];
+          }
+        }
+
+        const b64 = uint8ArrayToBase64(content);
+
         msgData.attachments.push({
-          fileName: fileName.replace(/\0/g, '').trim(),
+          fileName: cleanFileName,
+          contentId: cleanCid,
+          cid: cleanCid,
+          contentLocation: cleanLoc,
           mimeType: mimeType.replace(/\0/g, '').trim(),
           content: content,
-          size: content.length
+          base64Content: b64,
+          size: content.length,
+          extension: ext
         });
       }
+    }
+
+    // Resolve inline images in bodyHtml if present
+    if (msgData.bodyHtml && msgData.attachments.length > 0) {
+      msgData.bodyHtml = resolveInlineImages(msgData.bodyHtml, msgData.attachments);
     }
 
     // Clean and normalize senderName and senderEmail

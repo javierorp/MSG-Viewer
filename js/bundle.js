@@ -257,7 +257,264 @@
       .trim();
   }
 
-  // 2. Sanitizer & Escaping Functions
+  // 2. Sanitizer, Asset & Escaping Functions
+  function uint8ArrayToBase64(bytes) {
+    if (!bytes || bytes.length === 0) return "";
+    let binary = "";
+    const len = bytes.byteLength || bytes.length;
+    const chunkSize = 0x8000;
+    for (let i = 0; i < len; i += chunkSize) {
+      const end = Math.min(i + chunkSize, len);
+      const chunk = bytes.subarray
+        ? bytes.subarray(i, end)
+        : bytes.slice(i, end);
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    return window.btoa(binary);
+  }
+
+  function base64ToUint8Array(base64) {
+    if (!base64) return new Uint8Array(0);
+    const binaryString = window.atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  function resolveInlineImages(html, attachments) {
+    if (!html || !attachments || attachments.length === 0) {
+      return html || "";
+    }
+
+    const cidMap = new Map();
+    const fileMap = new Map();
+
+    for (const att of attachments) {
+      let base64 = att.base64Content;
+      if (!base64 && att.content) {
+        if (typeof att.content === "string") {
+          base64 = att.content;
+        } else if (att.content instanceof Uint8Array || att.content.buffer) {
+          base64 = uint8ArrayToBase64(att.content);
+        }
+      }
+      if (!base64) continue;
+
+      let mimeType = att.mimeType || "";
+      const fileName = (
+        att.fileName ||
+        att.longFilename ||
+        att.shortFilename ||
+        ""
+      )
+        .replace(/\0/g, "")
+        .trim();
+      const ext = fileName.includes(".")
+        ? fileName.split(".").pop().toLowerCase()
+        : (att.extension || "");
+
+      if (!mimeType || mimeType === "application/octet-stream") {
+        const mimeMap = {
+          png: "image/png",
+          jpg: "image/jpeg",
+          jpeg: "image/jpeg",
+          gif: "image/gif",
+          webp: "image/webp",
+          svg: "image/svg+xml",
+          bmp: "image/bmp",
+          ico: "image/x-icon",
+          tif: "image/tiff",
+          tiff: "image/tiff",
+        };
+        if (mimeMap[ext]) {
+          mimeType = mimeMap[ext];
+        } else {
+          mimeType = "image/png";
+        }
+      }
+
+      const dataUri = `data:${mimeType};base64,${base64}`;
+
+      const addKey = (key, map) => {
+        if (!key) return;
+        const k = String(key).trim();
+        if (!k) return;
+        map.set(k.toLowerCase(), dataUri);
+        const unbracketed = k.replace(/^<+|>+$/g, "").trim();
+        if (unbracketed) {
+          map.set(unbracketed.toLowerCase(), dataUri);
+          try {
+            map.set(decodeURIComponent(unbracketed).toLowerCase(), dataUri);
+          } catch (_) {}
+        }
+        try {
+          map.set(decodeURIComponent(k).toLowerCase(), dataUri);
+        } catch (_) {}
+      };
+
+      if (att.contentId) addKey(att.contentId, cidMap);
+      if (att.cid) addKey(att.cid, cidMap);
+      if (att.contentLocation) addKey(att.contentLocation, fileMap);
+      if (fileName) {
+        addKey(fileName, fileMap);
+        addKey(fileName, cidMap);
+      }
+      if (att.longFilename) {
+        addKey(att.longFilename, fileMap);
+        addKey(att.longFilename, cidMap);
+      }
+      if (att.shortFilename) {
+        addKey(att.shortFilename, fileMap);
+        addKey(att.shortFilename, cidMap);
+      }
+    }
+
+    if (cidMap.size === 0 && fileMap.size === 0) {
+      return html;
+    }
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+
+      const findDataUri = (srcVal) => {
+        if (!srcVal) return null;
+        let raw = srcVal.trim();
+        if (raw.toLowerCase().startsWith("cid:")) {
+          let cid = raw.slice(4).trim().replace(/^<+|>+$/g, "");
+          let match = cidMap.get(cid.toLowerCase());
+          if (match) return match;
+          try {
+            match = cidMap.get(decodeURIComponent(cid).toLowerCase());
+            if (match) return match;
+          } catch (_) {}
+          match = fileMap.get(cid.toLowerCase());
+          if (match) return match;
+        } else if (
+          !raw.includes("://") &&
+          !raw.startsWith("data:") &&
+          !raw.startsWith("blob:") &&
+          !raw.startsWith("//") &&
+          !raw.startsWith("mailto:")
+        ) {
+          let fn = raw.split(/[\\/]/).pop().trim();
+          let match =
+            fileMap.get(fn.toLowerCase()) || cidMap.get(fn.toLowerCase());
+          if (match) return match;
+          try {
+            match =
+              fileMap.get(decodeURIComponent(fn).toLowerCase()) ||
+              cidMap.get(decodeURIComponent(fn).toLowerCase());
+            if (match) return match;
+          } catch (_) {}
+        }
+        return null;
+      };
+
+      const images = doc.querySelectorAll("img");
+      images.forEach((img) => {
+        const src = img.getAttribute("src");
+        const dataUri = findDataUri(src);
+        if (dataUri) {
+          img.setAttribute("src", dataUri);
+        } else {
+          const alt = img.getAttribute("alt");
+          const altUri = findDataUri(alt);
+          if (altUri && (!src || src.toLowerCase().startsWith("cid:"))) {
+            img.setAttribute("src", altUri);
+          }
+        }
+      });
+
+      const vmlImages = doc.querySelectorAll("imagedata, v\\:imagedata");
+      vmlImages.forEach((el) => {
+        const src =
+          el.getAttribute("src") ||
+          el.getAttribute("o:title") ||
+          el.getAttribute("o:href");
+        const dataUri = findDataUri(src);
+        if (dataUri) {
+          el.setAttribute("src", dataUri);
+          const newImg = doc.createElement("img");
+          newImg.setAttribute("src", dataUri);
+          newImg.setAttribute(
+            "style",
+            "max-width:100%;height:auto;display:inline-block;",
+          );
+          const alt = el.getAttribute("o:title") || "Image";
+          newImg.setAttribute("alt", alt);
+          if (el.parentElement) {
+            el.parentElement.appendChild(newImg);
+          }
+        }
+      });
+
+      const styledElements = doc.querySelectorAll(
+        '[style*="cid:"], [style*="url("], [background]',
+      );
+      styledElements.forEach((el) => {
+        const style = el.getAttribute("style");
+        if (style) {
+          let newStyle = style.replace(
+            /url\(\s*(['"]?)(?:cid:)?([^'")]+)\1\s*\)/gi,
+            (match, quote, val) => {
+              const dataUri = findDataUri(val) || findDataUri("cid:" + val);
+              return dataUri ? `url("${dataUri}")` : match;
+            },
+          );
+          el.setAttribute("style", newStyle);
+        }
+        const bg = el.getAttribute("background");
+        if (bg) {
+          const dataUri = findDataUri(bg) || findDataUri("cid:" + bg);
+          if (dataUri) {
+            el.setAttribute("background", dataUri);
+          }
+        }
+      });
+
+      const styleTags = doc.querySelectorAll("style");
+      styleTags.forEach((st) => {
+        if (
+          st.textContent &&
+          (st.textContent.includes("cid:") || st.textContent.includes("url("))
+        ) {
+          st.textContent = st.textContent.replace(
+            /url\(\s*(['"]?)(?:cid:)?([^'")]+)\1\s*\)/gi,
+            (match, quote, val) => {
+              const dataUri = findDataUri(val) || findDataUri("cid:" + val);
+              return dataUri ? `url("${dataUri}")` : match;
+            },
+          );
+        }
+      });
+
+      return doc.documentElement
+        ? doc.documentElement.outerHTML
+        : doc.body.innerHTML;
+    } catch (e) {
+      console.warn("DOM-based inline image resolution error, fallback to regex:", e);
+      let result = html;
+      cidMap.forEach((dataUri, cid) => {
+        const escapedCid = cid.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const reg = new RegExp(
+          `(<img\\b[^>]*?\\bsrc\\s*=\\s*["'])(?:cid:)?<?${escapedCid}>?(["'])`,
+          "gi",
+        );
+        result = result.replace(reg, `$1${dataUri}$2`);
+        const cssReg = new RegExp(
+          `(url\\s*\\(\\s*["']?)(?:cid:)?<?${escapedCid}>?(["']?\\s*\\))`,
+          "gi",
+        );
+        result = result.replace(cssReg, `$1${dataUri}$2`);
+      });
+      return result;
+    }
+  }
+
   function sanitizeHtml(rawHtml) {
     if (!rawHtml) return "";
     const parser = new DOMParser();
@@ -300,7 +557,18 @@
       }
     });
 
-    return doc.body.innerHTML;
+    let headStyles = "";
+    if (doc.head) {
+      const styles = doc.head.querySelectorAll("style");
+      styles.forEach((s) => {
+        headStyles += s.outerHTML;
+      });
+    }
+
+    return (
+      (headStyles ? headStyles + "\n" : "") +
+      (doc.body ? doc.body.innerHTML : doc.documentElement.innerHTML)
+    );
   }
 
   function escapeHtml(str) {
@@ -311,17 +579,6 @@
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
-  }
-
-  function base64ToUint8Array(base64) {
-    if (!base64) return new Uint8Array(0);
-    const binaryString = window.atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
   }
 
   // 3. MS-OXRTFCP LZFu RTF Decompressor
@@ -840,6 +1097,8 @@
       for (const [attachName, streams] of attachmentStreams.entries()) {
         let fileName = "Attachment";
         let mimeType = "application/octet-stream";
+        let contentId = "";
+        let contentLocation = "";
         let content = null;
 
         for (const stream of streams) {
@@ -855,6 +1114,18 @@
             fileName = decodeStreamBytes(rawData, nameUpper.endsWith("001F"));
           } else if (nameUpper.includes("370E")) {
             mimeType = decodeStreamBytes(rawData, nameUpper.endsWith("001F"));
+          } else if (nameUpper.includes("3712")) {
+            contentId = decodeStreamBytes(rawData, nameUpper.endsWith("001F"));
+          } else if (nameUpper.includes("3713")) {
+            contentLocation = decodeStreamBytes(
+              rawData,
+              nameUpper.endsWith("001F"),
+            );
+          } else if (
+            nameUpper.includes("3001") &&
+            (!fileName || fileName === "Attachment")
+          ) {
+            fileName = decodeStreamBytes(rawData, nameUpper.endsWith("001F"));
           } else if (nameUpper.includes("3701")) {
             content = rawData;
           }
@@ -863,32 +1134,53 @@
         if (content && content.length > 0) {
           const cleanFileName =
             fileName.replace(/\0/g, "").trim() || "attachment.bin";
+          const cleanCid = contentId.replace(/\0/g, "").trim();
+          const cleanLoc = contentLocation.replace(/\0/g, "").trim();
           const ext = cleanFileName.includes(".")
             ? cleanFileName.split(".").pop().toLowerCase()
             : "";
 
           if (!mimeType || mimeType === "application/octet-stream") {
-            if (
-              ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext)
-            )
-              mimeType = `image/${ext === "jpg" ? "jpeg" : ext}`;
-            else if (ext === "pdf") mimeType = "application/pdf";
-            else if (
-              ["txt", "log", "csv", "json", "xml", "html", "js", "py"].includes(
-                ext,
-              )
-            )
-              mimeType = "text/plain";
+            const mimeMap = {
+              png: "image/png",
+              jpg: "image/jpeg",
+              jpeg: "image/jpeg",
+              gif: "image/gif",
+              webp: "image/webp",
+              svg: "image/svg+xml",
+              bmp: "image/bmp",
+              ico: "image/x-icon",
+              tif: "image/tiff",
+              tiff: "image/tiff",
+              pdf: "application/pdf",
+              txt: "text/plain",
+            };
+            if (mimeMap[ext]) {
+              mimeType = mimeMap[ext];
+            }
           }
+
+          const b64 = uint8ArrayToBase64(content);
 
           msgData.attachments.push({
             fileName: cleanFileName,
+            contentId: cleanCid,
+            cid: cleanCid,
+            contentLocation: cleanLoc,
             mimeType: mimeType.replace(/\0/g, "").trim(),
             content: content,
+            base64Content: b64,
             size: content.length,
             extension: ext,
           });
         }
+      }
+
+      if (msgData.bodyHtml && msgData.attachments.length > 0) {
+        msgData.bodyHtml = resolveInlineImages(
+          msgData.bodyHtml,
+          msgData.attachments,
+        );
       }
 
       // Clean and normalize senderName and senderEmail
@@ -1803,10 +2095,18 @@
           if (data.attachments) {
             data.attachments = data.attachments.map((att) => ({
               fileName: att.fileName,
+              contentId: att.contentId || att.cid || "",
+              cid: att.cid || att.contentId || "",
+              contentLocation: att.contentLocation || "",
               mimeType: att.mimeType,
               size: att.size,
               extension: att.extension,
-              content: base64ToUint8Array(att.base64Content),
+              base64Content: att.base64Content || "",
+              content:
+                att.content ||
+                (att.base64Content
+                  ? base64ToUint8Array(att.base64Content)
+                  : null),
             }));
           }
           return data;
@@ -1842,16 +2142,33 @@
         const rawMsg = newMsgs[i];
         if (rawMsg.attachments) {
           rawMsg.attachments = rawMsg.attachments.map((att) => {
+            const contentId = att.contentId || att.cid || "";
+            const cid = att.cid || att.contentId || "";
+            const contentLocation = att.contentLocation || "";
             if (att.base64Content && !att.content) {
               return {
-                fileName: att.fileName,
-                mimeType: att.mimeType,
-                size: att.size,
-                extension: att.extension,
+                ...att,
+                contentId,
+                cid,
+                contentLocation,
                 content: base64ToUint8Array(att.base64Content),
               };
             }
-            return att;
+            if (att.content && !att.base64Content) {
+              return {
+                ...att,
+                contentId,
+                cid,
+                contentLocation,
+                base64Content: uint8ArrayToBase64(att.content),
+              };
+            }
+            return {
+              ...att,
+              contentId,
+              cid,
+              contentLocation,
+            };
           });
         }
 
@@ -2328,7 +2645,11 @@
           (msg.bodyText
             ? `<html><body><div style="font-family: system-ui, sans-serif; padding: 16px; line-height: 1.6; color: #000000;">${escapeHtml(msg.bodyText).replace(/\n/g, "<br>")}</div></body></html>`
             : `<p>${this.t("noBodyHtml")}</p>`);
-        const cleanHtml = sanitizeHtml(contentToRender);
+        const resolvedHtml = resolveInlineImages(
+          contentToRender,
+          msg.attachments,
+        );
+        const cleanHtml = sanitizeHtml(resolvedHtml);
         const fullDoc = `
           <!DOCTYPE html>
           <html>
@@ -2646,10 +2967,18 @@
           if (data.attachments) {
             data.attachments = data.attachments.map((att) => ({
               fileName: att.fileName,
+              contentId: att.contentId || att.cid || "",
+              cid: att.cid || att.contentId || "",
+              contentLocation: att.contentLocation || "",
               mimeType: att.mimeType,
               size: att.size,
               extension: att.extension,
-              content: base64ToUint8Array(att.base64Content),
+              base64Content: att.base64Content || "",
+              content:
+                att.content ||
+                (att.base64Content
+                  ? base64ToUint8Array(att.base64Content)
+                  : null),
             }));
           }
           data.filePath = data.filePath || filePath;

@@ -1,5 +1,5 @@
 import { MsgParser } from "./msgParser.js";
-import { sanitizeHtml, escapeHtml } from "./sanitizer.js";
+import { sanitizeHtml, escapeHtml, resolveInlineImages, base64ToUint8Array } from "./sanitizer.js";
 
 const API_BASE = window.location.protocol.startsWith("http")
   ? ""
@@ -590,7 +590,21 @@ class MsgViewerApp {
       });
 
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        if (data && data.attachments) {
+          data.attachments = data.attachments.map((att) => ({
+            fileName: att.fileName,
+            contentId: att.contentId || att.cid || "",
+            cid: att.cid || att.contentId || "",
+            contentLocation: att.contentLocation || "",
+            mimeType: att.mimeType,
+            size: att.size,
+            extension: att.extension,
+            base64Content: att.base64Content || "",
+            content: att.content || (att.base64Content ? base64ToUint8Array(att.base64Content) : null),
+          }));
+        }
+        return data;
       }
     } catch (err) {}
     return null;
@@ -765,7 +779,8 @@ class MsgViewerApp {
       this.elements.bodyIframe.style.display = "block";
       this.elements.bodyPlain.style.display = "none";
 
-      const cleanHtml = sanitizeHtml(msg.bodyHtml);
+      const resolvedHtml = resolveInlineImages(msg.bodyHtml, msg.attachments);
+      const cleanHtml = sanitizeHtml(resolvedHtml);
       const fullDoc = `
         <!DOCTYPE html>
         <html>
@@ -965,6 +980,19 @@ class MsgViewerApp {
       );
       if (response.ok) {
         const data = await response.json();
+        if (data && data.attachments) {
+          data.attachments = data.attachments.map((att) => ({
+            fileName: att.fileName,
+            contentId: att.contentId || att.cid || "",
+            cid: att.cid || att.contentId || "",
+            contentLocation: att.contentLocation || "",
+            mimeType: att.mimeType,
+            size: att.size,
+            extension: att.extension,
+            base64Content: att.base64Content || "",
+            content: att.content || (att.base64Content ? base64ToUint8Array(att.base64Content) : null),
+          }));
+        }
         data.filePath = data.filePath || filePath;
         data.fileName =
           data.fileName || filePath.split(/[\\/]/).pop() || "message.msg";
