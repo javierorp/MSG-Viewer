@@ -17,7 +17,7 @@
 - **📎 Attachment Management**: Detects, previews, and allows direct one-click downloads of all attached files.
 - **🎨 Modern Web UI**: Responsive email client layout featuring:
   - **Dark Mode / Light Mode** (automatic system detection & persistent preference).
-  - **Multi-language Support** (English and Spanish with live switching).
+  - **Multi-language Support** (English, Spanish, French, and Portuguese with live switching).
   - **Drag & Drop** file opening support.
 - **💻 Zero-Admin Windows Integration**:
   - Run standalone in native Edge App Mode (`--app`).

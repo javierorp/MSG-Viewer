@@ -1,7 +1,7 @@
 /**
  * Self-Contained Bundle for MSG Viewer
  * Features: Guaranteed 3-Line Sidebar List Cards (Subject, Sender, Date/Time),
- * Robust Multi-Attribute Date Parser, Folder Selection, Multi-Language Dropdown (ES/EN),
+ * Robust Multi-Attribute Date Parser, Folder Selection, Multi-Language Dropdown (ES/EN/FR/PT),
  * High-Contrast Theme, Pure Black Print Engine, Dual Engine (Python REST API + Native JS OLE CFBF parser),
  * LZFu RTF Decompressor, HTML Sanitizer.
  */
@@ -155,6 +155,154 @@
       expandAttachments: "Expand attachments",
       toggleHeaderTitle: "Collapse or expand header",
       toggleAttachmentsTitle: "Collapse or expand attachments",
+    },
+    fr: {
+      appTitle: "MSG Viewer",
+      openMsg: "Ouvrir un e-mail '.msg'",
+      openFolder: "Ouvrir un dossier",
+      printPdf: "Imprimer / PDF",
+      printPdfTitle: "Imprimer l'e-mail ou enregistrer au format PDF",
+      searchPlaceholder: "Rechercher par objet ou expéditeur...",
+      dropTitle: "Sélectionnez ou glissez un e-mail .msg ou un dossier",
+      dropDesc:
+        "Cliquez sur les boutons ou glissez des fichiers d'e-mails (.msg) ou des dossiers complets depuis votre ordinateur pour les ouvrir instantanément.",
+      exploreFiles: "Parcourir les fichiers",
+      dropOverlayTitle: "Déposez les fichiers ou dossiers .msg ici",
+      dropOverlayDesc: "Ils seront ajoutés immédiatement à la liste des messages",
+      noSubject: "(Sans objet)",
+      unknownSender: "Inconnu",
+      noRecipients: "(Aucun destinataire)",
+      noDate: "Sans date",
+      labelFrom: "De :",
+      labelTo: "À :",
+      labelCc: "Cc :",
+      labelPath: "Chemin :",
+      tabHtml: "HTML ORIGINAL",
+      tabText: "TEXTE BRUT",
+      attachmentsTitle: "Pièces jointes",
+      saveAll: "Tout enregistrer",
+      btnPreview: "👁️ Aperçu",
+      btnSave: "💾 Enregistrer",
+      modalTitle: "Aperçu",
+      modalSave: "Enregistrer le fichier",
+      modalClose: "Fermer",
+      previewNotAvailable:
+        "Aperçu direct non disponible pour ce format de fichier.",
+      downloadFile: "Télécharger le fichier",
+      noBodyText: "(Cet e-mail ne contient aucun texte dans le corps)",
+      noBodyHtml: "(Cet e-mail ne contient aucun texte dans le corps)",
+      selectMsgAlert:
+        "Aucun fichier portant l'extension .msg n'a été trouvé dans la sélection.",
+      readErrorAlert: "Impossible de lire le fichier",
+      aboutTitle: "À propos de MSG Viewer",
+      aboutCreator: "Créé par :",
+      aboutContact: "Contact :",
+      aboutRepo: "Dépôt (GitHub) :",
+      aboutDesc:
+        "Visionneuse gratuite, hors ligne et sécurisée de fichiers '.msg' pour Windows",
+      zoomIn: "Augmenter la taille de la police",
+      zoomOut: "Diminuer la taille de la police",
+      zoomReset: "Réinitialiser la taille de la police",
+      uiZoomIn: "Augmenter le zoom de l'interface (Ctrl + +)",
+      uiZoomOut: "Diminuer le zoom de l'interface (Ctrl + -)",
+      uiZoomReset: "Réinitialiser le zoom de l'interface (Ctrl + 0)",
+      resizeSidebar:
+        "Glisser pour redimensionner le volet (double-clic pour réinitialiser)",
+      clearAll: "Effacer la liste",
+      clearAllTitle: "Supprimer tous les e-mails enregistrés de la liste",
+      clearAllConfirm:
+        "Voulez-vous supprimer tous les e-mails enregistrés de la liste ?",
+      removeMsg: "Retirer l'e-mail de la liste",
+      deleteMsgFile: "Supprimer",
+      deleteMsgFileTitle: "Déplacer ce fichier .msg vers la corbeille",
+      deleteMsgConfirm:
+        "Êtes-vous sûr de vouloir déplacer ce fichier vers la corbeille ?\n\n«{file}»",
+      deleteMsgError: "Impossible de déplacer le fichier vers la corbeille : ",
+      reloadApp: "Recharger l'interface",
+      emailCountSingular: "e-mail",
+      emailsCountPlural: "e-mails",
+      modalConfirm: "Accepter",
+      modalCancel: "Annuler",
+      collapseHeader: "Réduire l'en-tête",
+      expandHeader: "Développer l'en-tête",
+      collapseAttachments: "Réduire les pièces jointes",
+      expandAttachments: "Développer les pièces jointes",
+      toggleHeaderTitle: "Réduire ou développer l'en-tête",
+      toggleAttachmentsTitle: "Réduire ou développer les pièces jointes",
+    },
+    pt: {
+      appTitle: "MSG Viewer",
+      openMsg: "Abrir e-mail '.msg'",
+      openFolder: "Abrir pasta",
+      printPdf: "Imprimir / PDF",
+      printPdfTitle: "Imprimir e-mail ou salvar como PDF",
+      searchPlaceholder: "Pesquisar por assunto ou remetente...",
+      dropTitle: "Selecione ou arraste um e-mail .msg ou pasta",
+      dropDesc:
+        "Clique nos botões ou arraste arquivos de e-mail (.msg) ou pastas inteiras do seu computador para abri-los instantaneamente.",
+      exploreFiles: "Procurar arquivos",
+      dropOverlayTitle: "Solte os arquivos ou pastas .msg aqui",
+      dropOverlayDesc: "Eles serão adicionados à lista de mensagens imediatamente",
+      noSubject: "(Sem assunto)",
+      unknownSender: "Desconhecido",
+      noRecipients: "(Sem destinatários)",
+      noDate: "Sem data",
+      labelFrom: "De:",
+      labelTo: "Para:",
+      labelCc: "Cc:",
+      labelPath: "Caminho:",
+      tabHtml: "HTML ORIGINAL",
+      tabText: "TEXTO SIMPLES",
+      attachmentsTitle: "Anexos",
+      saveAll: "Salvar tudo",
+      btnPreview: "👁️ Visualizar",
+      btnSave: "💾 Salvar",
+      modalTitle: "Visualização",
+      modalSave: "Salvar arquivo",
+      modalClose: "Fechar",
+      previewNotAvailable:
+        "Visualização direta não disponível para este formato de arquivo.",
+      downloadFile: "Baixar arquivo",
+      noBodyText: "(Este e-mail não contém texto no corpo)",
+      noBodyHtml: "(Este e-mail não contém texto no corpo)",
+      selectMsgAlert:
+        "Nenhum arquivo com extensão .msg foi encontrado na seleção.",
+      readErrorAlert: "Não foi possível ler o arquivo",
+      aboutTitle: "Sobre o MSG Viewer",
+      aboutCreator: "Criado por:",
+      aboutContact: "Contato:",
+      aboutRepo: "Repositório (GitHub):",
+      aboutDesc:
+        "Visualizador gratuito, offline e seguro de arquivos '.msg' para Windows",
+      zoomIn: "Aumentar tamanho da fonte",
+      zoomOut: "Diminuir tamanho da fonte",
+      zoomReset: "Redefinir tamanho da fonte",
+      uiZoomIn: "Aumentar zoom da interface (Ctrl + +)",
+      uiZoomOut: "Diminuir zoom da interface (Ctrl + -)",
+      uiZoomReset: "Redefinir zoom da interface (Ctrl + 0)",
+      resizeSidebar:
+        "Arraste para redimensionar o painel (clique duplo para redefinir)",
+      clearAll: "Limpar lista",
+      clearAllTitle: "Remover todos os e-mails salvos da lista",
+      clearAllConfirm:
+        "Deseja remover todos os e-mails salvos da lista?",
+      removeMsg: "Remover e-mail da lista",
+      deleteMsgFile: "Excluir",
+      deleteMsgFileTitle: "Mover este arquivo .msg para a lixeira",
+      deleteMsgConfirm:
+        "Tem certeza de que deseja mover este arquivo para a lixeira?\n\n«{file}»",
+      deleteMsgError: "Não foi possível mover o arquivo para a lixeira: ",
+      reloadApp: "Recarregar interface",
+      emailCountSingular: "e-mail",
+      emailsCountPlural: "e-mails",
+      modalConfirm: "OK",
+      modalCancel: "Cancelar",
+      collapseHeader: "Recolher cabeçalho",
+      expandHeader: "Expandir cabeçalho",
+      collapseAttachments: "Recolher anexos",
+      expandAttachments: "Expandir anexos",
+      toggleHeaderTitle: "Recolher ou expandir cabeçalho",
+      toggleAttachmentsTitle: "Recolher ou expandir anexos",
     },
   };
 
@@ -1346,7 +1494,19 @@
       this.viewMode = "html";
 
       // i18n language state
-      const defaultLang = "en";
+      let defaultLang = "en";
+      try {
+        const navLang = (
+          navigator.language ||
+          navigator.userLanguage ||
+          "en"
+        )
+          .substring(0, 2)
+          .toLowerCase();
+        if (translations[navLang]) {
+          defaultLang = navLang;
+        }
+      } catch (e) {}
       this.currentLang = localStorage.getItem("msg_viewer_lang") || defaultLang;
 
       // Font zoom level (60% to 250%, default 100%)
