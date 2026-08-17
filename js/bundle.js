@@ -92,6 +92,9 @@
         "¡Acceso directo creado correctamente en el Escritorio!",
       integrationError: "Error al realizar la operación: ",
       processing: "Procesando...",
+      keepInList: "Conservar correos en la lista",
+      keepInListTitle:
+        "Mantener los correos abiertos en la lista lateral (desmarcar para reemplazar al abrir uno nuevo)",
     },
     en: {
       appTitle: "MSG Viewer",
@@ -166,6 +169,9 @@
       createDesktopShortcutSuccess: "Desktop shortcut created successfully!",
       integrationError: "Error performing operation: ",
       processing: "Processing...",
+      keepInList: "Keep emails in list",
+      keepInListTitle:
+        "Keep opened emails in the sidebar list (uncheck to replace when opening a new email)",
     },
     fr: {
       appTitle: "MSG Viewer",
@@ -246,6 +252,9 @@
         "Raccourci sur le Bureau créé avec succès !",
       integrationError: "Erreur lors de l'opération : ",
       processing: "Traitement en cours...",
+      keepInList: "Conserver les e-mails dans la liste",
+      keepInListTitle:
+        "Garder les e-mails ouverts dans la liste latérale (décocher pour remplacer à l'ouverture d'un nouvel e-mail)",
     },
     pt: {
       appTitle: "MSG Viewer",
@@ -326,6 +335,9 @@
         "Atalho na Área de Trabalho criado com sucesso!",
       integrationError: "Erro ao realizar a operação: ",
       processing: "Processando...",
+      keepInList: "Manter e-mails na lista",
+      keepInListTitle:
+        "Manter os e-mails abertos na lista lateral (desmarcar para substituir ao abrir um novo e-mail)",
     },
   };
 
@@ -1556,6 +1568,10 @@
       this.isAttachmentsCollapsed =
         localStorage.getItem("msg_viewer_attachments_collapsed") === "true";
 
+      // Keep opened emails in list preference (default true)
+      this.keepInList =
+        localStorage.getItem("msg_viewer_keep_in_list") !== "false";
+
       this.storage = new MsgStorage();
 
       this.initDOMElements();
@@ -1574,19 +1590,24 @@
     async initData() {
       try {
         await this.storage.init();
-        const savedMessages = await this.storage.getAll();
-        if (savedMessages && savedMessages.length > 0) {
-          this.messages = savedMessages;
-          this.renderSidebarList();
-          const savedActiveId = localStorage.getItem("msg_viewer_active_id");
-          let activeIndex = -1;
-          if (savedActiveId) {
-            activeIndex = this.messages.findIndex(
-              (m) => m.id === savedActiveId,
-            );
+        if (this.keepInList) {
+          const savedMessages = await this.storage.getAll();
+          if (savedMessages && savedMessages.length > 0) {
+            this.messages = savedMessages;
+            this.renderSidebarList();
+            const savedActiveId = localStorage.getItem("msg_viewer_active_id");
+            let activeIndex = -1;
+            if (savedActiveId) {
+              activeIndex = this.messages.findIndex(
+                (m) => m.id === savedActiveId,
+              );
+            }
+            if (activeIndex < 0) activeIndex = this.messages.length - 1;
+            this.selectMessage(activeIndex);
           }
-          if (activeIndex < 0) activeIndex = this.messages.length - 1;
-          this.selectMessage(activeIndex);
+        } else {
+          await this.storage.clearAll();
+          localStorage.removeItem("msg_viewer_active_id");
         }
       } catch (err) {
         console.warn("Could not load saved messages from storage:", err);
@@ -1665,6 +1686,7 @@
         sidebarMetaRow: document.getElementById("sidebarMetaRow"),
         messagesCountBadge: document.getElementById("messagesCountBadge"),
         btnClearAll: document.getElementById("btnClearAll"),
+        chkKeepInList: document.getElementById("chkKeepInList"),
         fileList: document.getElementById("fileList"),
         searchInput: document.getElementById("searchInput"),
         emptyState: document.getElementById("emptyState"),
@@ -1734,6 +1756,10 @@
         confirmModalBtnCancel: document.getElementById("confirmModalBtnCancel"),
         confirmModalBtnClose: document.getElementById("confirmModalBtnClose"),
       };
+
+      if (this.elements.chkKeepInList) {
+        this.elements.chkKeepInList.checked = this.keepInList;
+      }
     }
 
     initEventListeners() {
@@ -1794,6 +1820,12 @@
           this.elements.folderInput.click();
         }
       };
+
+      if (this.elements.chkKeepInList) {
+        this.elements.chkKeepInList.addEventListener("change", (e) =>
+          this.setKeepInList(e.target.checked),
+        );
+      }
 
       if (this.elements.fileInput) {
         this.elements.fileInput.addEventListener("change", (e) =>
@@ -2392,8 +2424,41 @@
       });
     }
 
+    async setKeepInList(enabled) {
+      this.keepInList = !!enabled;
+      localStorage.setItem("msg_viewer_keep_in_list", String(this.keepInList));
+      if (this.elements.chkKeepInList) {
+        this.elements.chkKeepInList.checked = this.keepInList;
+      }
+      if (!this.keepInList && this.messages.length > 1) {
+        if (
+          this.currentMsgIndex >= 0 &&
+          this.currentMsgIndex < this.messages.length
+        ) {
+          const activeMsg = this.messages[this.currentMsgIndex];
+          this.messages = [activeMsg];
+          this.currentMsgIndex = 0;
+          await this.storage.clearAll();
+          await this.storage.saveMessage(activeMsg);
+        } else {
+          this.messages = [];
+          this.currentMsgIndex = -1;
+          await this.storage.clearAll();
+          this.elements.emptyState.style.display = "flex";
+          this.elements.emailDetails.style.display = "none";
+        }
+        this.renderSidebarList();
+      }
+    }
+
     async addMessages(newMsgs, targetSelectIndex = -1) {
       if (!newMsgs || newMsgs.length === 0) return;
+
+      if (!this.keepInList) {
+        await this.storage.clearAll();
+        this.messages = [];
+        this.currentMsgIndex = -1;
+      }
 
       let firstIndex = -1;
       const toSave = [];

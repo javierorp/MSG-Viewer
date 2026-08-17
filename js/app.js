@@ -107,6 +107,10 @@ class MsgViewerApp {
     this.isAttachmentsCollapsed =
       localStorage.getItem("msg_viewer_attachments_collapsed") === "true";
 
+    // Keep opened emails in list preference (default true)
+    this.keepInList =
+      localStorage.getItem("msg_viewer_keep_in_list") !== "false";
+
     this.initDOMElements();
     this.initEventListeners();
     this.initSidebarResizer();
@@ -126,6 +130,7 @@ class MsgViewerApp {
       dragOverlay: document.getElementById("dragOverlay"),
       sidebar: document.getElementById("sidebar"),
       sidebarResizer: document.getElementById("sidebarResizer"),
+      chkKeepInList: document.getElementById("chkKeepInList"),
       fileList: document.getElementById("fileList"),
       searchInput: document.getElementById("searchInput"),
       emptyState: document.getElementById("emptyState"),
@@ -172,9 +177,42 @@ class MsgViewerApp {
       btnThemeToggle: document.getElementById("btnThemeToggle"),
       iconTheme: document.getElementById("iconTheme"),
     };
+
+    if (this.elements.chkKeepInList) {
+      this.elements.chkKeepInList.checked = this.keepInList;
+    }
+  }
+
+  setKeepInList(enabled) {
+    this.keepInList = !!enabled;
+    localStorage.setItem("msg_viewer_keep_in_list", String(this.keepInList));
+    if (this.elements.chkKeepInList) {
+      this.elements.chkKeepInList.checked = this.keepInList;
+    }
+    if (!this.keepInList && this.messages.length > 1) {
+      if (
+        this.currentMsgIndex >= 0 &&
+        this.currentMsgIndex < this.messages.length
+      ) {
+        this.messages = [this.messages[this.currentMsgIndex]];
+        this.currentMsgIndex = 0;
+      } else {
+        this.messages = [];
+        this.currentMsgIndex = -1;
+        this.elements.emptyState.style.display = "flex";
+        this.elements.emailDetails.style.display = "none";
+      }
+      this.renderSidebarList();
+    }
   }
 
   initEventListeners() {
+    if (this.elements.chkKeepInList) {
+      this.elements.chkKeepInList.addEventListener("change", (e) =>
+        this.setKeepInList(e.target.checked),
+      );
+    }
+
     const openFilePicker = async (e) => {
       if (e) e.stopPropagation();
       try {
@@ -184,6 +222,10 @@ class MsgViewerApp {
         if (response.ok) {
           const data = await response.json();
           if (!data.cancelled && data.messages && data.messages.length > 0) {
+            if (!this.keepInList) {
+              this.messages = [];
+              this.currentMsgIndex = -1;
+            }
             data.messages.forEach((msg) => {
               this.messages.push(msg);
             });
@@ -211,6 +253,10 @@ class MsgViewerApp {
         if (response.ok) {
           const data = await response.json();
           if (!data.cancelled && data.messages && data.messages.length > 0) {
+            if (!this.keepInList) {
+              this.messages = [];
+              this.currentMsgIndex = -1;
+            }
             data.messages.forEach((msg) => {
               this.messages.push(msg);
             });
@@ -617,6 +663,11 @@ class MsgViewerApp {
     if (msgFiles.length === 0) {
       alert("Please select a file with .msg extension");
       return;
+    }
+
+    if (!this.keepInList) {
+      this.messages = [];
+      this.currentMsgIndex = -1;
     }
 
     for (const file of msgFiles) {

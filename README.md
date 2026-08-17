@@ -10,6 +10,28 @@
 
 ---
 
+## 📑 Table of Contents
+
+- [MSG Viewer](#msg-viewer)
+  - [📑 Table of Contents](#-table-of-contents)
+  - [✨ Features](#-features)
+  - [🛠️ Architecture Overview](#️-architecture-overview)
+  - [📡 Port \& Data Exchange (Frontend ⟷ Backend)](#-port--data-exchange-frontend--backend)
+    - [Dedicated Network Port: `48721`](#dedicated-network-port-48721)
+    - [Information Exchange Flow](#information-exchange-flow)
+  - [🚀 Getting Started](#-getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Quick Launch](#quick-launch)
+  - [🔗 Windows Integration (Desktop Shortcut)](#-windows-integration-desktop-shortcut)
+    - [Option 1: Directly from the Application UI (Recommended)](#option-1-directly-from-the-application-ui-recommended)
+    - [Option 2: Using PowerShell Script](#option-2-using-powershell-script)
+  - [📂 Project Structure](#-project-structure)
+  - [📦 Building Standalone Executable (.exe)](#-building-standalone-executable-exe)
+  - [🔒 Security \& Privacy](#-security--privacy)
+  - [📄 License](#-license)
+
+---
+
 ## ✨ Features
 
 - **🔒 100% Offline & Private**: All file processing occurs locally on your machine. Your emails and attachments never leave your device.
@@ -42,7 +64,9 @@ MSG Viewer operates as a dual-layer application:
 ## 📡 Port & Data Exchange (Frontend ⟷ Backend)
 
 ### Dedicated Network Port: `48721`
+
 The local server binds strictly to loopback address **`127.0.0.1:48721`**.
+
 - **Conflict Prevention**: Standard ports like `8080`, `8000`, `3000`, or `5000` are frequently occupied by web servers (Tomcat, Spring Boot, IIS), developer tools, or Docker containers. Port `48721` resides in the unassigned private range, preventing port collision issues.
 - **Local Isolation**: The socket is bound exclusively to `127.0.0.1` (localhost), meaning it is completely unreachable from outside the machine or local area network.
 
@@ -176,4 +200,4 @@ The resulting executable will be located in `dist/MSG-Viewer.exe`.
 
 ## 📄 License
 
-Distributed under the GNU General Public License v3.0 (GPLv3). See `LICENSE` for more information.
+Distributed under the GNU General Public License v3.0 (GPLv3). See [`LICENSE`](https://github.com/javierorp/MSG-Viewer?tab=GPL-3.0-1-ov-file) for more information.

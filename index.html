@@ -23,7 +23,7 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="apple-touch-icon" href="docs/images/msg-viewer-icon.png" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="stylesheet" href="css/styles.css?v=6" />
+    <link rel="stylesheet" href="css/styles.css?v=7" />
     <script>
       // Prevent theme and UI zoom Flash of Unstyled Content (FOUC)
       (function () {
@@ -375,6 +375,24 @@
                 placeholder="Search by subject or sender..."
                 data-i18n-placeholder="searchPlaceholder"
               />
+            </div>
+            <div class="sidebar-settings-row">
+              <label
+                class="sidebar-checkbox-label"
+                for="chkKeepInList"
+                title="Keep opened emails in the sidebar list"
+                data-i18n-title="keepInListTitle"
+              >
+                <input
+                  type="checkbox"
+                  id="chkKeepInList"
+                  class="sidebar-checkbox"
+                  checked
+                />
+                <span class="checkbox-text" data-i18n="keepInList"
+                  >Keep emails in list</span
+                >
+              </label>
             </div>
           </div>
 
@@ -1036,6 +1054,6 @@
       </div>
     </div>
 
-    <script src="js/bundle.js?v=9"></script>
+    <script src="js/bundle.js?v=10"></script>
   </body>
 </html>
