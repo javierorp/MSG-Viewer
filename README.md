@@ -198,9 +198,10 @@ The resulting executable will be located in `dist/MSG-Viewer.exe`.
 - **No Remote Calls**: No telemetry, tracking scripts, or external dependencies.
 - **Localhost Binding**: The local backend server binds strictly to `127.0.0.1:48721` and is inaccessible from external networks.
 - **No Installation Needed**: Works cleanly out of local directories without installing system-wide drivers or background services.
+- **Security Policy**: For responsible disclosure and vulnerability reporting, see [`SECURITY.md`](SECURITY.md).
 
 ---
 
 ## 📄 License
 
-Distributed under the GNU General Public License v3.0 (GPLv3). See [`LICENSE`](https://github.com/javierorp/MSG-Viewer?tab=GPL-3.0-1-ov-file) for more information.
+Distributed under the GNU General Public License v3.0 (GPLv3). See [`LICENSE`](LICENSE) for more information.
