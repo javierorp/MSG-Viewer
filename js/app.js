@@ -1,4 +1,5 @@
 import { MsgParser } from "./msgParser.js";
+import { EmlParser } from "./emlParser.js";
 import { sanitizeHtml, escapeHtml, resolveInlineImages, base64ToUint8Array } from "./sanitizer.js";
 
 const API_BASE = window.location.protocol.startsWith("http")
@@ -657,11 +658,12 @@ class MsgViewerApp {
   }
 
   async handleFilesSelected(files) {
-    const msgFiles = Array.from(files).filter((f) =>
-      f.name.toLowerCase().endsWith(".msg"),
-    );
-    if (msgFiles.length === 0) {
-      alert("Please select a file with .msg extension");
+    const emailFiles = Array.from(files).filter((f) => {
+      const name = f.name.toLowerCase();
+      return name.endsWith(".msg") || name.endsWith(".eml");
+    });
+    if (emailFiles.length === 0) {
+      alert("Please select a file with .msg or .eml extension");
       return;
     }
 
@@ -670,14 +672,25 @@ class MsgViewerApp {
       this.currentMsgIndex = -1;
     }
 
-    for (const file of msgFiles) {
+    for (const file of emailFiles) {
       try {
         const arrayBuffer = await file.arrayBuffer();
         let parsedData = await this.parseMsgWithServer(arrayBuffer, file);
 
         if (!parsedData) {
-          const parser = new MsgParser(arrayBuffer);
-          parsedData = parser.parse();
+          const isEml = file.name.toLowerCase().endsWith(".eml");
+          if (isEml) {
+            const parser = new EmlParser(arrayBuffer);
+            parsedData = parser.parse();
+          } else {
+            try {
+              const parser = new MsgParser(arrayBuffer);
+              parsedData = parser.parse();
+            } catch (msgErr) {
+              const parser = new EmlParser(arrayBuffer);
+              parsedData = parser.parse();
+            }
+          }
         }
 
         parsedData.fileName = file.name;
@@ -690,14 +703,14 @@ class MsgViewerApp {
 
         this.messages.push(parsedData);
       } catch (err) {
-        console.error("Error parsing .msg file:", err);
+        console.error("Error parsing email file:", err);
         alert(`Could not read file ${file.name}: ${err.message}`);
       }
     }
 
     if (this.messages.length > 0) {
       this.renderSidebarList();
-      this.selectMessage(this.messages.length - msgFiles.length); // Select first newly added msg
+      this.selectMessage(this.messages.length - emailFiles.length); // Select first newly added msg
     }
   }
 

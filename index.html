@@ -6,7 +6,7 @@
     <title>MSG Viewer</title>
     <meta
       name="description"
-      content="Free, offline, and secure .msg file viewer for Windows without administrator permissions required."
+      content="Free, offline, and secure .msg and .eml file viewer for Windows without administrator permissions required."
     />
     <meta name="theme-color" content="#2563eb" />
     <link
@@ -120,7 +120,7 @@
           <button
             id="btnOpen"
             class="btn btn-primary"
-            title="Open .msg file"
+            title="Open Email (.msg, .eml)"
             data-i18n-title="openMsg"
           >
             <svg
@@ -137,7 +137,7 @@
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            <span data-i18n="openMsg">Open .msg Email</span>
+            <span data-i18n="openMsg">Open Email (.msg, .eml)</span>
           </button>
 
           <button
@@ -277,7 +277,7 @@
         <input
           type="file"
           id="fileInput"
-          accept=".msg"
+          accept=".msg,.eml"
           multiple
           style="display: none"
         />
@@ -310,7 +310,7 @@
               </svg>
             </div>
             <div class="drop-title" data-i18n="dropOverlayTitle">
-              Drop .msg files or folders here
+              Drop email files (.msg, .eml) or folders here
             </div>
             <div class="drop-desc" data-i18n="dropOverlayDesc">
               They will be added to the message list immediately
@@ -439,10 +439,10 @@
                 </svg>
               </div>
               <div class="drop-title" data-i18n="dropTitle">
-                Select or drag a .msg email or folder
+                Select or drag an email (.msg, .eml) or folder
               </div>
               <div class="drop-desc" data-i18n="dropDesc">
-                Click the buttons or drag email files (.msg) or entire folders
+                Click the buttons or drag email files (.msg, .eml) or entire folders
                 from your computer to open them instantly.
               </div>
               <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; justify-content: center">
@@ -876,7 +876,7 @@
           </div>
 
           <p class="about-desc" data-i18n="aboutDesc">
-            Free, offline, and secure .msg file viewer for Windows without
+            Free, offline, and secure email viewer (.msg, .eml) for Windows without
             administrator permissions required.
           </p>
 

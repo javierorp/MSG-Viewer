@@ -8,7 +8,10 @@ import base64
 import ctypes
 from ctypes import wintypes
 import datetime
+import email
+from email import policy
 import email.utils
+from email.utils import parseaddr, parsedate_to_datetime
 import http.server
 import json
 import os
@@ -485,7 +488,7 @@ $Shortcut.Save()
 
 
 def pick_files_native():
-    """Open native Windows file dialog to select .msg files."""
+    """Open native Windows file dialog to select .msg and .eml files."""
     if not HAS_TKINTER:
         return []
     try:
@@ -493,11 +496,13 @@ def pick_files_native():
         root.withdraw()
         root.wm_attributes('-topmost', 1)
         file_types = [
+            ("Archivos de correo (*.msg;*.eml)", "*.msg;*.eml"),
             ("Archivos MSG (*.msg)", "*.msg"),
+            ("Archivos EML (*.eml)", "*.eml"),
             ("Todos los archivos (*.*)", "*.*")
         ]
         file_paths = filedialog.askopenfilenames(
-            title="Seleccionar archivos de correo .msg",
+            title="Seleccionar archivos de correo (.msg, .eml)",
             filetypes=file_types
         )
         root.destroy()
@@ -516,7 +521,7 @@ def pick_folder_native():
         root.withdraw()
         root.wm_attributes('-topmost', 1)
         folder_path = filedialog.askdirectory(
-            title="Seleccionar carpeta con archivos .msg"
+            title="Seleccionar carpeta con archivos de correo (.msg, .eml)"
         )
         root.destroy()
         return os.path.normpath(folder_path) if folder_path else ""
@@ -867,6 +872,185 @@ def extract_msg_data(msg, file_path=None):
     return response_data
 
 
+def extract_eml_data(eml_source, file_path=None):
+    """Parse an .eml message into a JSON-serializable dictionary matching MSG format."""
+    if isinstance(eml_source, (bytes, bytearray)):
+        raw_bytes = bytes(eml_source)
+        msg = email.message_from_bytes(raw_bytes, policy=policy.default)
+    elif isinstance(eml_source, str) and os.path.isfile(eml_source):
+        file_path = eml_source
+        with open(eml_source, 'rb') as f:
+            raw_bytes = f.read()
+        msg = email.message_from_bytes(raw_bytes, policy=policy.default)
+    elif isinstance(eml_source, str):
+        msg = email.message_from_string(eml_source, policy=policy.default)
+    else:
+        raw_bytes = eml_source.read()
+        msg = email.message_from_bytes(raw_bytes, policy=policy.default)
+
+    subject = str(msg.get('subject', '') or '').strip() or "(No Subject)"
+
+    from_raw = str(msg.get('from', '') or '').strip()
+    sender_name = ""
+    sender_email_addr = ""
+    if from_raw:
+        parsed_name, parsed_email = parseaddr(from_raw)
+        sender_name = parsed_name.strip('"\' ')
+        sender_email_addr = parsed_email.strip()
+        if not sender_name and not sender_email_addr:
+            sender_name = from_raw
+        elif not sender_name and '@' in from_raw and not sender_email_addr:
+            sender_email_addr = from_raw
+
+    if (
+        sender_name
+        and sender_email_addr
+        and sender_name.lower() == sender_email_addr.lower()
+    ):
+        sender_name = ""
+
+    display_to = str(msg.get('to', '') or '')
+    display_cc = str(msg.get('cc', '') or '')
+    display_bcc = str(msg.get('bcc', '') or '')
+
+    date_str = ""
+    date_header = msg.get('date')
+    if date_header:
+        try:
+            dt = parsedate_to_datetime(str(date_header))
+            date_str = dt.isoformat()
+        except Exception:
+            date_str = str(date_header)
+
+    body_text = ""
+    body_html = ""
+    attachments = []
+
+    for part in msg.walk():
+        content_type = part.get_content_type().lower()
+        content_disposition = str(part.get_content_disposition() or "").lower()
+        filename = part.get_filename()
+
+        is_attachment = False
+        if content_disposition == 'attachment':
+            is_attachment = True
+        elif filename:
+            is_attachment = True
+        elif part.get('Content-ID') and content_type not in ('text/plain', 'text/html'):
+            is_attachment = True
+        elif content_type not in (
+            'text/plain', 'text/html',
+            'multipart/mixed', 'multipart/alternative', 'multipart/related',
+            'multipart/signed', 'multipart/encrypted', 'multipart/report'
+        ) and not part.is_multipart():
+            is_attachment = True
+
+        if is_attachment:
+            try:
+                payload = part.get_payload(decode=True)
+            except Exception:
+                payload = None
+
+            if payload is not None:
+                att_name = filename or "attachment.bin"
+                ext = att_name.split('.')[-1].lower() if '.' in att_name else ""
+                cid = str(part.get('Content-ID', '') or '').strip(' \t\r\n\0<>')
+                loc = str(part.get('Content-Location', '') or '').strip(' \t\r\n\0')
+                raw_mime = part.get_content_type()
+                mime_type = _detect_mime_type(att_name, payload, raw_mime)
+                b64_content = base64.b64encode(payload).decode('ascii')
+
+                attachments.append({
+                    "fileName": att_name,
+                    "contentId": cid,
+                    "cid": cid,
+                    "contentLocation": loc,
+                    "mimeType": mime_type,
+                    "size": len(payload),
+                    "extension": ext,
+                    "base64Content": b64_content
+                })
+        else:
+            if content_type == 'text/html' and not body_html:
+                try:
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or 'utf-8'
+                        body_html = payload.decode(charset, errors='replace')
+                except Exception:
+                    body_html = str(part.get_payload() or '')
+            elif content_type == 'text/plain' and not body_text:
+                try:
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or 'utf-8'
+                        body_text = payload.decode(charset, errors='replace')
+                except Exception:
+                    body_text = str(part.get_payload() or '')
+
+    if body_html and attachments:
+        body_html = _resolve_inline_images(body_html, attachments)
+
+    response_data = {
+        "subject": subject,
+        "senderName": sender_name,
+        "senderEmail": sender_email_addr,
+        "displayTo": display_to,
+        "displayCc": display_cc,
+        "displayBcc": display_bcc,
+        "bodyText": body_text,
+        "bodyHtml": body_html,
+        "date": date_str,
+        "attachments": attachments
+    }
+
+    if file_path:
+        response_data["filePath"] = os.path.abspath(file_path)
+        response_data["fileName"] = os.path.basename(file_path)
+
+    return response_data
+
+
+def parse_email_file(file_path):
+    """Parse either .msg or .eml file from disk."""
+    if not file_path or not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    with open(file_path, 'rb') as f:
+        header = f.read(8)
+
+    if header.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'):
+        msg = extract_msg.Message(file_path)
+        try:
+            return extract_msg_data(msg, file_path=file_path)
+        finally:
+            if hasattr(msg, 'close'):
+                msg.close()
+    else:
+        return extract_eml_data(file_path, file_path=file_path)
+
+
+def parse_email_bytes(data_bytes, file_name=None, file_path=None):
+    """Parse either .msg or .eml from binary memory buffer."""
+    if data_bytes.startswith(b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'):
+        msg = extract_msg.Message(data_bytes)
+        try:
+            data = extract_msg_data(msg, file_path=file_path)
+            if not file_path and file_name:
+                data["fileName"] = file_name
+                data["filePath"] = file_name
+            return data
+        finally:
+            if hasattr(msg, 'close'):
+                msg.close()
+    else:
+        data = extract_eml_data(data_bytes, file_path=file_path)
+        if not file_path and file_name:
+            data["fileName"] = file_name
+            data["filePath"] = file_name
+        return data
+
+
 class MsgHandler(http.server.SimpleHTTPRequestHandler):
     """HTTP Request Handler providing static file serving and REST API."""
 
@@ -936,14 +1120,7 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
                         self.send_json({"error": err}, status=404)
                         return
 
-                msg = extract_msg.Message(target_path)
-                try:
-                    response_data = extract_msg_data(
-                        msg, file_path=target_path
-                    )
-                finally:
-                    if hasattr(msg, 'close'):
-                        msg.close()
+                response_data = parse_email_file(target_path)
                 self.send_json(response_data)
             except Exception as e:  # pylint: disable=broad-exception-caught
                 self.send_json({"error": str(e)}, status=500)
@@ -977,12 +1154,18 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(404)
 
     def handle_parse(self):
-        """Handle parse request for uploaded .msg file stream."""
+        """Handle parse request for uploaded .msg / .eml file stream."""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
 
             file_name = self.headers.get('X-File-Name', '')
+            if file_name:
+                try:
+                    file_name = unquote(file_name)
+                except Exception:
+                    pass
+
             file_size_hdr = self.headers.get('X-File-Size', '')
             file_size = (
                 int(file_size_hdr)
@@ -990,19 +1173,16 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
                 else len(post_data)
             )
 
-            msg = extract_msg.Message(post_data)
-            try:
-                found_path = (
-                    find_file_on_disk(file_name, file_size)
-                    if file_name else None
-                )
-                response_data = extract_msg_data(msg, file_path=found_path)
-                if not found_path and file_name:
-                    response_data["fileName"] = file_name
-                    response_data["filePath"] = file_name
-            finally:
-                if hasattr(msg, 'close'):
-                    msg.close()
+            found_path = (
+                find_file_on_disk(file_name, file_size)
+                if file_name else None
+            )
+
+            response_data = parse_email_bytes(
+                post_data,
+                file_name=file_name,
+                file_path=found_path
+            )
 
             self.send_json(response_data)
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -1069,13 +1249,7 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
             messages = []
             for fp in file_paths:
                 try:
-                    msg = extract_msg.Message(fp)
-                    try:
-                        messages.append(extract_msg_data(msg, file_path=fp))
-                    finally:
-                        if hasattr(msg, 'close'):
-                            msg.close()
-                # pylint: disable=broad-exception-caught
+                    messages.append(parse_email_file(fp))
                 except Exception as ex:
                     print(f"Error parsing {fp}:", ex)
             self.send_json({"cancelled": False, "messages": messages})
@@ -1092,19 +1266,13 @@ class MsgHandler(http.server.SimpleHTTPRequestHandler):
             file_paths = []
             for root_dir, _, files in os.walk(folder):
                 for f in files:
-                    if f.lower().endswith('.msg'):
+                    if f.lower().endswith(('.msg', '.eml')):
                         file_paths.append(os.path.join(root_dir, f))
 
             messages = []
             for fp in file_paths:
                 try:
-                    msg = extract_msg.Message(fp)
-                    try:
-                        messages.append(extract_msg_data(msg, file_path=fp))
-                    finally:
-                        if hasattr(msg, 'close'):
-                            msg.close()
-                # pylint: disable=broad-exception-caught
+                    messages.append(parse_email_file(fp))
                 except Exception as ex:
                     print(f"Error parsing {fp}:", ex)
             self.send_json({

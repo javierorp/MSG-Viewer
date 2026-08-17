@@ -120,7 +120,7 @@ if ($ResolvedExe -and (Test-Path $ResolvedExe)) {
     }
 }
 
-$Shortcut.Description = "MSG Viewer - Offline .msg File Viewer"
+$Shortcut.Description = "MSG Viewer - Offline .msg & .eml File Viewer"
 $Shortcut.Save()
 
 Write-Host "Desktop shortcut created successfully with custom icon at: $ShortcutPath" -ForegroundColor Green

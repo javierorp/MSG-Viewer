@@ -4,9 +4,11 @@
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6.svg)](https://www.microsoft.com)
 [![Privacy: 100% Offline](https://img.shields.io/badge/Privacy-100%25%20Offline-success.svg)](#-features)
 
-**MSG Viewer** is a lightweight, secure, and fully offline Outlook `.msg` file viewer designed for Windows. It allows users to open, inspect, and extract attachments from Microsoft Outlook message files without requiring Microsoft Outlook, administrative permissions, or uploading sensitive data to external servers.
+**MSG Viewer** is a lightweight, secure, and fully offline `.msg` and `.eml` email file viewer designed for Windows. It allows users to open, inspect, and extract attachments from Microsoft Outlook message files (`.msg`) and standard RFC 822 / MIME email files (`.eml`) without requiring Microsoft Outlook, administrative permissions, or uploading sensitive data to external servers.
 
 ![MSG Viewer Preview](docs/images/preview.png)
+
+![MSG Viewer Preview (dark)](docs/images/preview_dark.png)
 
 ---
 
@@ -35,12 +37,13 @@
 ## ✨ Features
 
 - **🔒 100% Offline & Private**: All file processing occurs locally on your machine. Your emails and attachments never leave your device.
+- **📧 Multi-Format Support (.msg & .eml)**: Full compatibility with Outlook binary message files (`.msg`) and standard MIME/RFC 822 files (`.eml`).
 - **📧 Complete Email Rendering**: High-fidelity display of HTML bodies, plain text fallbacks, sender/recipient metadata, headers, and dates.
 - **📎 Attachment Management**: Detects, previews, and allows direct one-click downloads of all attached files.
 - **🎨 Modern Web UI**: Responsive email client layout featuring:
   - **Dark Mode / Light Mode** (automatic system detection & persistent preference).
   - **Multi-language Support** (English, Spanish, French, and Portuguese with live switching).
-  - **Drag & Drop** file opening support.
+  - **Drag & Drop** file opening support for `.msg` and `.eml` files.
 - **💻 Zero-Admin Windows Integration**:
   - **1-Click Desktop Shortcut**: Create a desktop icon directly from the UI or PowerShell.
   - Run standalone in native Edge App Mode (`--app`).
@@ -53,10 +56,10 @@
 MSG Viewer operates as a dual-layer application:
 
 1. **Frontend**: Standalone web interface built with HTML5, CSS3, and JavaScript, running inside Microsoft Edge in App Mode (`--app`) or standard modern browsers.
-2. **Backend**: Lightweight local Python HTTP/REST API server listening on `127.0.0.1:48721`, using the `extract-msg` library to parse OLE/MSG binary formats directly from the file system or memory.
+2. **Backend**: Lightweight local Python HTTP/REST API server listening on `127.0.0.1:48721`, using `extract-msg` and Python's native `email` standard library to parse `.msg` and `.eml` formats directly from the file system or memory.
 
 ```text
-[ .msg File ] ──► [ Local Python Server (127.0.0.1:48721) ] ──► [ MSG Viewer App (Edge/Browser UI) ]
+[ .msg / .eml File ] ──► [ Local Python Server (127.0.0.1:48721) ] ──► [ MSG Viewer App (Edge/Browser UI) ]
 ```
 
 ---
@@ -85,22 +88,22 @@ The application features a **Dual-Engine** communication model:
                     │                                │
 ┌───────────────────▼────────────────────────────────▼───────────────────┐
 │                     Local Python Server (48721)                        │
-│                 (extract-msg / PowerShell Dialogs)                     │
+│              (extract-msg & email / PowerShell Dialogs)                │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 1. **Server-Assisted Processing (Primary)**:
    The frontend communicates asynchronously with the local Python server via the standard `Fetch API`.
    - **`GET /api/health`**: Health-check endpoint used during startup to verify server readiness or detect existing instances before opening new windows.
-   - **`GET /api/load-file?path=<path>`**: Loads and extracts a `.msg` file directly from local disk. Python extracts headers, sender/recipient details, date/time, HTML/plain text bodies, and base64-encoded attachments, returning a structured JSON payload to the UI.
-   - **`POST /api/parse`**: Parses raw `.msg` binary buffers uploaded via drag-and-drop or file selection.
-   - **`GET/POST /api/pick-files` & `/api/pick-folder`**: Triggers native Windows file/folder selection dialogs through PowerShell, recursively scanning directories for `.msg` files and extracting metadata in batches.
-   - **`POST /api/open-folder`**: Opens Windows File Explorer highlighting the active `.msg` file location on disk.
-   - **`POST /api/delete-file`**: Safely removes the selected `.msg` file from disk upon user confirmation.
+   - **`GET /api/load-file?path=<path>`**: Loads and extracts a `.msg` or `.eml` file directly from local disk. Python extracts headers, sender/recipient details, date/time, HTML/plain text bodies, and base64-encoded attachments, returning a structured JSON payload to the UI.
+   - **`POST /api/parse`**: Parses raw `.msg` or `.eml` binary buffers uploaded via drag-and-drop or file selection.
+   - **`GET/POST /api/pick-files` & `/api/pick-folder`**: Triggers native Windows file/folder selection dialogs through PowerShell, recursively scanning directories for `.msg` and `.eml` files and extracting metadata in batches.
+   - **`POST /api/open-folder`**: Opens Windows File Explorer highlighting the active email file location on disk.
+   - **`POST /api/delete-file`**: Safely removes the selected email file from disk upon user confirmation.
    - **`POST /api/create-shortcut`**: Automatically generates a Windows Desktop shortcut with the custom application icon.
 
 2. **Client-Side Fallback (Secondary)**:
-   If the Python server is not reachable, the frontend seamlessly activates its embedded JavaScript OLE Compound File (CFBF) and LZFu decompressor engine, enabling 100% standalone offline operation directly within any browser window.
+   If the Python server is not reachable, the frontend seamlessly activates its embedded JavaScript OLE Compound File (CFBF), EML MIME parser, and LZFu decompressor engine, enabling 100% standalone offline operation directly within any browser window.
 
 ---
 
@@ -161,7 +164,7 @@ msg-viewer/
 ├── docs/                         # Documentation assets and icons (SVG, PNG, ICO)
 ├── js/                           # Client-side logic (UI, parsing fallback, i18n)
 ├── py/                           # Local Python server & backend scripts
-│   ├── server.py                 # HTTP REST API server (processes .msg via extract-msg)
+│   ├── server.py                 # HTTP REST API server (processes .msg & .eml files)
 │   └── launch.ps1                # Background python server launcher
 └── scripts/                      # Utility scripts
     ├── Build-EXE.ps1             # Build standalone MSG-Viewer.exe using PyInstaller
